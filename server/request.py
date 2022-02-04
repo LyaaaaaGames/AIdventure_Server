@@ -1,5 +1,6 @@
 #------------------------------------------------------------------------------
-#-- Copyright (c) 2021 Lyaaaaaaaaaaaaaaa
+#-- Copyright (c) 2021-2022 LyaaaaaGames
+#-- Copyright (c) 2022 AIdventure_Server contributors
 #--
 #-- Author : Lyaaaaaaaaaaaaaaa
 #--
