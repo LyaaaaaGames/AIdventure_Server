@@ -15,6 +15,9 @@
 #--
 #--  - 30/12/2021 Lyaaaaa
 #--    - Replaced urllib.request by requests library.
+#--
+#--  - 04/02/2022 Lyaaaaa
+#--    - Fixed content_lenght typo and renamed it into content_length.
 #------------------------------------------------------------------------------
 
 import requests
@@ -36,15 +39,15 @@ def download_file(p_url, p_path = "cache/" ,p_block_size = 65536):
   i            = 0
 
   with requests.get(p_url, stream = True) as response:
-    content_lenght = response.headers["content-length"]
-    content_lenght = int(content_lenght)
+    content_length = response.headers["content-length"]
+    content_length = int(content_length)
 
     for chunk in response.iter_content(p_block_size):
       file_size_dl += len(chunk)
       file.write(chunk)
 
       if i == 10:
-        percentage    = round(file_size_dl * 100. / content_lenght, 1)
+        percentage    = round(file_size_dl * 100. / content_length, 1)
         print(file_name + ':', humanize_size(file_size_dl) , '[' + str(percentage) + '%' + ']')
         i = 0
 
