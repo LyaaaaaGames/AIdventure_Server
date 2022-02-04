@@ -60,6 +60,29 @@
 #--  - 29/12/2021 Lyaaaaa
 #--    - Imported download_file function from downloader
 #--    - Updated handle_request to handle Request.DOWNLOAD_MODEL case.
+#--
+#--  - 17/01/2022 Lyaaaaa
+#--    - Updater init_logger to write in a file
+#--    - Updated handle_request to write in logs if CUDA is available.
+#--
+#--  - 18/01/2022 Lyaaaaa
+#--    - Updated init_logger.
+#--    - Remove logger.info from handle_request.
+#--
+#--  - 19/01/2022 Lyaaaaa
+#--    - Updated init_logger to init the global variable logger and set the logging
+#--        level to INFO.
+#--    - Updated handler and handle_request to use logger to log messages.
+#--
+#--  - 20/01/2022 Lyaaaaa
+#--    - Added a logger.info to log if the GPU is enabled for the generation.
+#--
+#--  - 21/01/2022 Lyaaaaa
+#--    - Updated handle_request to get p_data['use_gpu'] value in the LOAD_MODEL
+#--        case.
+#--
+#--  - 25/01/2022 Lyaaaaa
+#--    - Set logging level to info instead of debug.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -75,23 +98,30 @@ from downloader import download_file
 HOST = "localhost"
 PORT = 9999
 
-model = None
+model  = None
+logger = None
 
 #------------------------------------------------------------------------------
 # init_logger
 #------------------------------------------------------------------------------
 def init_logger():
+  global logger
+  logging.basicConfig(filename = "server/server_logs.text",
+                      filemode = 'a',
+                      format   = '%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                      datefmt  = '%H:%M:%S')
   logger = logging.getLogger("websockets.server")
-  logger.setLevel(logging.ERROR)
+  logger.setLevel(logging.INFO)
   logger.addHandler(logging.StreamHandler())
-
 
 #------------------------------------------------------------------------------
 # handler
 #------------------------------------------------------------------------------
 async def handler(p_websocket, path):
+  global logger
+
   client_ip = p_websocket.remote_address[0]
-  print("Client " + client_ip + " connected")
+  logger.info("Client " + client_ip + " connected")
 
   try:
     async for message in p_websocket:
@@ -102,11 +132,11 @@ async def handler(p_websocket, path):
         await p_websocket.send(data_to_send)
 
   except websockets.exceptions.ConnectionClosedOK:
-    print("Closing the server")
+    logger.info("Closing the server")
     shutdown_server()
 
   except websockets.exceptions.ConnectionClosedError:
-    print("Closing the server")
+    logger.info("Closing the server")
     shutdown_server()
 
 
@@ -115,6 +145,7 @@ async def handler(p_websocket, path):
 #------------------------------------------------------------------------------
 def handle_request(p_websocket, p_data : dict):
   global model
+  global logger
 
   request = p_data['request']
 
@@ -136,12 +167,15 @@ def handle_request(p_websocket, p_data : dict):
     shutdown_server()
 
   elif request == Request.LOAD_MODEL.value:
-    model_name        = p_data['model_name']
-    model             = Model(model_name)
+    model_name = p_data['model_name']
+    use_gpu    = p_data['use_gpu']
+    model      = Model(model_name, use_gpu)
 
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)
 
+    logger.info("Is CUDA available: " + format(model.is_cuda_available))
+    logger.info("Is GPU acceleration enabled: " + format(model.is_gpu_enabled))
     return p_data
 
   elif request == Request.DOWNLOAD_MODEL.value:

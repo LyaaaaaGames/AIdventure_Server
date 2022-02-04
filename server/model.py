@@ -4,17 +4,13 @@
 #-- Author : Lyaaaaaaaaaaaaaaa
 #--
 #-- Portability Issues (feel free to remove this part if there is none):
-#--  - This class needs Pytorch installed.
+#--  -
 #--
 #-- Implementation Notes:
 #--  - This class will handle all the task related to the AI model.
 #--
 #-- Anticipated changes:
-#--  - Use a specific configuration.json file for each model (each model folder
-#--      already has a config file. It could be more efficient to save each config
-#--      into its own folder.
 #--  - Update generate_text to make it possible to generate multiple answers.
-#--  - Get rid of the configuration as I confused the generation and model config.
 #--
 #-- Changelog:
 #--  - 31/08/2021 Lyaaaaa
@@ -49,6 +45,31 @@
 #--    - Changed the default value of p_model_name in __init__ from gpt2 to
 #--        gpt-neo-125M.
 #--
+#--  - 17/01/2022 Lyaaaaa
+#--    - Added support for cuda.
+#--
+#--  - 18/01/2022 Lyaaaaa
+#--    - Added _enable_gpu method.
+#--    - Removed use_cuda parameter from from_pretrained calls as it was an error.
+#--    - Updated __init__ to receive p_gpu_enabled parameter and to call _enable_gpu
+#--        if p_gpu_enabled is true and is_cuda_available true.
+#--
+#--  - 20/01/2022 Lyaaaaa
+#--    - Updated __init__ to fix the condition to call _enable_gpu and set
+#--        the is_gpu_enabled attribute.
+#--    - Updated generate_text to format the input_ids for cuda in case the
+#--        GPU is used.
+#--    - Updated _enable_gpu to set is_gpu_enabled.
+#--
+#--  - 21/01/2022 Lyaaaaa
+#--    - Renamed p_gpu_enabled into p_use_gpu.
+#--
+#--  - 25/01/2022 Lyaaaaa
+#--    - Added logging package and _logger attribute to debug.
+#--    - Added _empty_gpu_cache and _get_gpu_info methods.
+#--    - Updated generate_text and _enable_gpu to call both new methods.
+#--    - Fixed _load second try, "error" not being declared.
+#--
 #--  - 01/02/2022 Lyaaaaa
 #--    - Changed the default value of p_model_name in __init__ from gpt2 to
 #--        EleutherAI/gpt-neo-125M.
@@ -58,24 +79,41 @@
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, GPTNeoConfig
 import os
+import torch
+import logging
+
+
+global logger
+logging.basicConfig(filename = "server/server_logs.text",
+                    filemode = 'a',
+                    format   = '%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt  = '%H:%M:%S')
+logger = logging.getLogger("websockets.server")
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler()) # TODO Remove logger before merge in prod
 
 class Model():
-
+  global logger
   _Tokenizer = AutoTokenizer
   _Model     = AutoModelForCausalLM
   _Config    = GPTNeoConfig
+  _logger    = logger # TODO Remove logger before merge in prod
 
 
 #------------------------------------------------------------------------------
 #-- __init__
 #------------------------------------------------------------------------------
-  def __init__(self, p_model_name = "EleutherAI/gpt-neo-125M"):
-    self._tokenizer_path = "tokenizers/" + p_model_name
-    self._model_path     = "models/" + p_model_name
-    self._model_name     = p_model_name
+  def __init__(self, p_model_name = "EleutherAI/gpt-neo-125M", p_use_gpu = True):
+    self._tokenizer_path   = "tokenizers/" + p_model_name
+    self._model_path       = "models/" + p_model_name
+    self._model_name       = p_model_name
+    self.is_cuda_available = torch.cuda.is_available()
+    self.is_gpu_enabled    = False
 
     if self._load() == False:
       self._download()
+    if p_use_gpu == True and self.is_cuda_available == True:
+      self._enable_gpu()
     else:
       print("Model successfully loaded from local file")
 
@@ -89,18 +127,24 @@ class Model():
                     p_memory     = None,
                     p_parameters = None):
 
+    self._get_gpu_info()
+    model_input  = p_memory + p_context + p_prompt
+
     model_input    = p_memory + p_context + p_prompt
     tokens         = self._Tokenizer(model_input, return_tensors = "pt")
     attention_mask = tokens.attention_mask
     model_input    = tokens.input_ids
 
     p_parameters["max_length"] += len(model_input[0])
+    
+    if self.is_gpu_enabled == True:
+      model_input = model_input.to("cuda")
 
     model_output = self._Model.generate(input_ids       = model_input,
                                         attention_mask  = attention_mask,
                                         **p_parameters)
     generated_text = self._Tokenizer.decode(model_output[0], skip_special_tokens=True)
-
+    self._empty_gpu_cache()
     return generated_text
 
 
@@ -118,9 +162,6 @@ class Model():
 
 #------------------------------------------------------------------------------
 #-- _load
-#--
-#-- Anticipated changes:
-#--  - Load the configuration file from the model folder.
 #------------------------------------------------------------------------------
   def _load(self):
 
@@ -133,8 +174,7 @@ class Model():
     try:
       self._Model = AutoModelForCausalLM.from_pretrained(self._model_path)
 
-    except error:
-      print(error)
+    except:
       return False
 
     return True
@@ -163,3 +203,28 @@ class Model():
                                                            resume_download = True)
     self._save()
 
+
+#------------------------------------------------------------------------------
+#-- _enable_gpu
+#------------------------------------------------------------------------------
+  def _enable_gpu(self):
+      self._Model.to("cuda")
+      self.is_gpu_enabled = True
+      self._empty_gpu_cache()
+      self._get_gpu_info()
+
+
+  def _empty_gpu_cache(self):
+      self._logger.info("Clearing GPU cache")
+      torch.cuda.empty_cache()
+
+
+  def _get_gpu_info(self):
+      self._logger.info("---------------Memory allocated---------------")
+      self._logger.info(torch.cuda.memory_allocated())
+      self._logger.info("---------------Max memory allocated---------------")
+      self._logger.info(torch.cuda.max_memory_allocated())
+      self._logger.info("---------------Memory reserved---------------")
+      self._logger.info(torch.cuda.memory_reserved())
+      self._logger.info("---------------Max memory reserved---------------")
+      self._logger.info(torch.cuda.max_memory_reserved())
