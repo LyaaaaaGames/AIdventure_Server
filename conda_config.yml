@@ -1,0 +1,10 @@
+name: aidventure
+channels:
+  - defaults
+dependencies:
+  - pip
+  - python=3.9.7
+  - pip:
+    - websockets==10.0
+    - torch==1.10.1
+    - transformers==4.15

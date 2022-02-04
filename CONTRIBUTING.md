@@ -1,8 +1,7 @@
 # CONTRIBUTING
 
-Thank you for considering contributing to my humble project! It's very kind. 
-However, be sure to read the code of conduit and guidelines before to contribute.
-*You can find them in the management folder.*
+Thank you for considering contributing to my project! It's very kind. 
+However, be sure to read the code of conduit and the style guide before to contribute.
 
 ## How to file a bug report?
 Go in **issues**, then click on **new issue** and select **bug report**
@@ -21,8 +20,20 @@ Go in **Discussions**. Any suggestion is welcome! Of course, everything isn't
 7. Get credited. UwU
 
 ## How to set up your environment and run tests?
-You will need [Godot Engine](https://godotengine.org/download) installed.
-Then clone the repository and open it with Godot Engine.
+
+### Using conda
+You can use conda to create the environment.
+
+1. Install [miniconda](https://docs.conda.io/en/latest/miniconda.html)
+2. Run `conda env create --file conda_config.yml` command
+3. Activate aidventure environment `conda activate aidventure`
+4. Run the server.py script or any of the server's scripts.
+
+
+### Using pip
+
+1. Install the packages listed in `requirements.txt`
+2. Run the server.py script or any of the server's script.
 
 ## The types of contributions I'm looking for
 As long as you feel useful to contribute, do so! You can contribute by making 
@@ -35,5 +46,5 @@ If you are more old school you can send me an email at lyaaaaa.games.contact@pro
 
 ## Useful resources
 
-- [Style guide]()
+- [Style guide](https://github.com/LyaaaaaGames/AIdventure_Server/blob/main/style_guide.md)
 
