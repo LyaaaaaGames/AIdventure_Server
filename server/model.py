@@ -84,6 +84,10 @@
 #--        to crash if the GPU runs out of memory.
 #--    - Added a print in __init__ to investigate the ISSUE#2.
 #--    - Replaced the prints by self._logger.info.
+#--
+#--  - 11/02/2022 Lyaaaaa
+#--    - Updated _enable_gpu to call _model.to("cpu") if the the runtime error
+#--        happens with the GPU.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, GPTNeoConfig
@@ -219,13 +223,18 @@ class Model():
   def _enable_gpu(self):
     self._empty_gpu_cache()
     self._get_gpu_info()
+
     try:
       self._Model.to("cuda")
       self.is_gpu_enabled = True
       self._get_gpu_info()
+
     except RuntimeError:
       self._logger.error("A runtime error happened!")
+      self._logger.info("Falling back to CPU.")
+      self._model.to("cpu")
       self._empty_gpu_cache()
+
     finally:
       self.is_gpu_enabled = False
 
@@ -244,3 +253,4 @@ class Model():
     self._logger.info(torch.cuda.memory_reserved())
     self._logger.info("---------------Max memory reserved---------------")
     self._logger.info(torch.cuda.max_memory_reserved())
+
