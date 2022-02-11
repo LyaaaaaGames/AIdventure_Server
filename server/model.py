@@ -82,6 +82,8 @@
 #--        indentation.
 #--    - Updated _enable_gpu to add a try except finally conditions to avoid
 #--        to crash if the GPU runs out of memory.
+#--    - Added a print in __init__ to investigate the ISSUE#2.
+#--    - Replaced the prints by self._logger.info.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, GPTNeoConfig
@@ -117,12 +119,13 @@ class Model():
     self.is_cuda_available = torch.cuda.is_available()
     self.is_gpu_enabled    = False
 
+    self._logger.info("Model to load: " + p_model_name) #TODO To remove before merge in prod
     if self._load() == False:
       self._download()
     if p_use_gpu == True and self.is_cuda_available == True:
       self._enable_gpu()
     else:
-      print("Model successfully loaded from local file")
+      self._logger.info("Model successfully loaded from local file")
 
 
 #------------------------------------------------------------------------------
@@ -174,7 +177,7 @@ class Model():
     try:
       self._Tokenizer = AutoTokenizer.from_pretrained(self._tokenizer_path)
     except:
-      print("Token file in '" + self._tokenizer_path + "' not found.")
+      self._logger.info("Token file in '" + self._tokenizer_path + "' not found.")
       return False
 
     try:
@@ -199,11 +202,11 @@ class Model():
 #------------------------------------------------------------------------------
   def _download(self):
     model_name = self._model_name
-    print("Trying to download the tokenizer...")
+    self._logger.info("Trying to download the tokenizer...")
     self._Tokenizer = AutoTokenizer.from_pretrained(model_name,
                                                     cache_dir       = "cache",
                                                     resume_download = True)
-    print("Trying to download the model...")
+    self._logger.info("Trying to download the model...")
     self._Model     = AutoModelForCausalLM.from_pretrained(model_name,
                                                            cache_dir       = "cache",
                                                            resume_download = True)
@@ -221,7 +224,7 @@ class Model():
       self.is_gpu_enabled = True
       self._get_gpu_info()
     except RuntimeError:
-      print("A runtime error happened!")
+      self._logger.error("A runtime error happened!")
       self._empty_gpu_cache()
     finally:
       self.is_gpu_enabled = False
