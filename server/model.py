@@ -75,6 +75,13 @@
 #--        EleutherAI/gpt-neo-125M.
 #--    - Updated generate_text to append the input_ids' size to max_length in
 #--        p_parameters. Also added attention_mask as parameter to generate method.
+#--
+#--  - 11/02/2022 Lyaaaaa
+#--    - Removed _get_gpu_info call from generate_text method.
+#--    - Updated _enable_gpu, _empty_gpu_cache and _get_gpu_info to fix the
+#--        indentation.
+#--    - Updated _enable_gpu to add a try except finally conditions to avoid
+#--        to crash if the GPU runs out of memory.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, GPTNeoConfig
@@ -127,7 +134,6 @@ class Model():
                     p_memory     = None,
                     p_parameters = None):
 
-    self._get_gpu_info()
     model_input  = p_memory + p_context + p_prompt
 
     model_input    = p_memory + p_context + p_prompt
@@ -208,23 +214,30 @@ class Model():
 #-- _enable_gpu
 #------------------------------------------------------------------------------
   def _enable_gpu(self):
+    self._empty_gpu_cache()
+    self._get_gpu_info()
+    try:
       self._Model.to("cuda")
       self.is_gpu_enabled = True
-      self._empty_gpu_cache()
       self._get_gpu_info()
+    except RuntimeError:
+      print("A runtime error happened!")
+      self._empty_gpu_cache()
+    finally:
+      self.is_gpu_enabled = False
 
 
   def _empty_gpu_cache(self):
-      self._logger.info("Clearing GPU cache")
-      torch.cuda.empty_cache()
+    self._logger.info("Clearing GPU cache")
+    torch.cuda.empty_cache()
 
 
   def _get_gpu_info(self):
-      self._logger.info("---------------Memory allocated---------------")
-      self._logger.info(torch.cuda.memory_allocated())
-      self._logger.info("---------------Max memory allocated---------------")
-      self._logger.info(torch.cuda.max_memory_allocated())
-      self._logger.info("---------------Memory reserved---------------")
-      self._logger.info(torch.cuda.memory_reserved())
-      self._logger.info("---------------Max memory reserved---------------")
-      self._logger.info(torch.cuda.max_memory_reserved())
+    self._logger.info("---------------Memory allocated---------------")
+    self._logger.info(torch.cuda.memory_allocated())
+    self._logger.info("---------------Max memory allocated---------------")
+    self._logger.info(torch.cuda.max_memory_allocated())
+    self._logger.info("---------------Memory reserved---------------")
+    self._logger.info(torch.cuda.memory_reserved())
+    self._logger.info("---------------Max memory reserved---------------")
+    self._logger.info(torch.cuda.max_memory_reserved())
