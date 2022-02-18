@@ -61,6 +61,11 @@
 #--  - 29/12/2021 Lyaaaaa
 #--    - Imported download_file function from downloader
 #--    - Updated handle_request to handle Request.DOWNLOAD_MODEL case.
+#--
+#--  - 18/02/2022 Lyaaaaa
+#--    - Added the Generator and Model_Type imports.
+#--    - Renamed model into generator.
+#--    - Replaced the Model class by the Generator class.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -69,14 +74,15 @@ import logging
 
 from json_utils import Json_Utils
 from request    import Request
-from model      import Model
+from generator  import Generator
+from model_type import Model_Type
 from downloader import download_file
 
 
 HOST = "localhost"
 PORT = 9999
 
-model = None
+generator = None
 
 #------------------------------------------------------------------------------
 # init_logger
@@ -115,7 +121,7 @@ async def handler(p_websocket, path):
 # handle_request
 #------------------------------------------------------------------------------
 def handle_request(p_websocket, p_data : dict):
-  global model
+  global generator
 
   request = p_data['request']
 
@@ -125,10 +131,10 @@ def handle_request(p_websocket, p_data : dict):
     memory     = p_data['memory']
     parameters = p_data['parameters']
 
-    p_data['generated_text'] = model.generate_text(prompt,
-                                                   context,
-                                                   memory,
-                                                   parameters)
+    p_data['generated_text'] = generator.generate_text(prompt,
+                                                       context,
+                                                       memory,
+                                                       parameters)
     p_data = Json_Utils.json_to_string(p_data)
 
     return p_data
@@ -138,7 +144,7 @@ def handle_request(p_websocket, p_data : dict):
 
   elif request == Request.LOAD_MODEL.value:
     model_name        = p_data['model_name']
-    model             = Model(model_name)
+    generator         = Generator(model_name, Model_Type.GENERATION.value)
 
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)

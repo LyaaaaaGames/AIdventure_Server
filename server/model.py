@@ -55,67 +55,41 @@
 #--        EleutherAI/gpt-neo-125M.
 #--    - Updated generate_text to append the input_ids' size to max_length in
 #--        p_parameters. Also added attention_mask as parameter to generate method.
+#--
+#--  - 18/02/2022 Lyaaaaa
+#--    - Removed Config and reload_config.
+#--    - Extracted generate_text method to generator class.
+#--    - Added the model_type and AutoModelForSeq2SeqLM imports.
+#--    - Updated __init__ to receive the a parameter to specify the model's type.
+#--    - Updated _load and _download methods to use either AutoModelForCausalLM or
+#--        AutoModelForSeq2SeqLM depending of the _model_type attribute's value.
 #------------------------------------------------------------------------------
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, GPTNeoConfig
+from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
+from model_type   import Model_Type
 import os
 
 class Model():
 
-  _Tokenizer = AutoTokenizer
-  _Model     = AutoModelForCausalLM
-  _Config    = GPTNeoConfig
-
+  _Tokenizer  : AutoTokenizer
+  _model_type : Model_Type
+  _Model = None
 
 #------------------------------------------------------------------------------
 #-- __init__
 #------------------------------------------------------------------------------
-  def __init__(self, p_model_name = "EleutherAI/gpt-neo-125M"):
+  def __init__(self,
+               p_model_name = "EleutherAI/gpt-neo-125M",
+               p_model_type = Model_Type.GENERATION.value):
     self._tokenizer_path = "tokenizers/" + p_model_name
     self._model_path     = "models/" + p_model_name
     self._model_name     = p_model_name
+    self._model_type = p_model_type
 
     if self._load() == False:
       self._download()
     else:
       print("Model successfully loaded from local file")
-
-
-#------------------------------------------------------------------------------
-#-- generate_text
-#------------------------------------------------------------------------------
-  def generate_text(self,
-                    p_prompt     = None,
-                    p_context    = None,
-                    p_memory     = None,
-                    p_parameters = None):
-
-    model_input    = p_memory + p_context + p_prompt
-    tokens         = self._Tokenizer(model_input, return_tensors = "pt")
-    attention_mask = tokens.attention_mask
-    model_input    = tokens.input_ids
-
-    p_parameters["max_length"] += len(model_input[0])
-
-    model_output = self._Model.generate(input_ids       = model_input,
-                                        attention_mask  = attention_mask,
-                                        **p_parameters)
-    generated_text = self._Tokenizer.decode(model_output[0], skip_special_tokens=True)
-
-    return generated_text
-
-
-#------------------------------------------------------------------------------
-#-- reload_config
-#------------------------------------------------------------------------------
-  def reload_config(self):
-    try:
-      self._Model = AutoModelForCausalLM.from_pretrained(self._model_path)
-    except:
-      return False
-
-    return True
-
 
 #------------------------------------------------------------------------------
 #-- _load
@@ -132,10 +106,12 @@ class Model():
       return False
 
     try:
-      self._Model = AutoModelForCausalLM.from_pretrained(self._model_path)
+      if self._model_type == Model_Type.GENERATION.value:
+        self._Model = AutoModelForCausalLM.from_pretrained(self._model_path)
+      elif self._model_type == Model_Type.TRANSLATION.value:
+        self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_path)
 
-    except error:
-      print(error)
+    except:
       return False
 
     return True
@@ -159,8 +135,13 @@ class Model():
                                                     cache_dir       = "cache",
                                                     resume_download = True)
     print("Trying to download the model...")
-    self._Model     = AutoModelForCausalLM.from_pretrained(model_name,
-                                                           cache_dir       = "cache",
-                                                           resume_download = True)
+    if self._model_type == Model_Type.GENERATION.value:
+      self._Model = AutoModelForCausalLM.from_pretrained(model_name,
+                                                         cache_dir       = "cache",
+                                                         resume_download = True)
+    elif self._model_type == Model_Type.TRANSLATION.value:
+      self._Model = AutoModelForSeq2SeqLM.from_pretrained(model_name,
+                                                          cache_dir       = "cache",
+                                                          resume_download = True)
     self._save()
 
