@@ -88,9 +88,20 @@
 #--  - 11/02/2022 Lyaaaaa
 #--    - Updated _enable_gpu to call _model.to("cpu") if the the runtime error
 #--        happens with the GPU.
+#--
+#--  - 18/02/2022 Lyaaaaa
+#--    - Removed _Config and reload_config method (not used method)
+#--    - Updated generate_text to fix the "inputs on different devices" error.
+#--        attention_mark was not converted to cuda while model_input was.
+#--        Moved _empty_gpu_cache into a "if self.is_gpu_enabled == True"
+#--    - Extracted from _enable_gpu the code which disable the gpu. This code
+#--       is now in his own method, _disable_gpu.
+#---   - Updated _empty_gpu_cache and _get_gpu_info to use logger in debug mode.
+#--    - Set logging level to DEBUG
+#--    - Set logging to overwrite the log file.
 #------------------------------------------------------------------------------
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, GPTNeoConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import os
 import torch
 import logging
@@ -98,18 +109,17 @@ import logging
 
 global logger
 logging.basicConfig(filename = "server/server_logs.text",
-                    filemode = 'a',
+                    filemode = 'w',
                     format   = '%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     datefmt  = '%H:%M:%S')
 logger = logging.getLogger("websockets.server")
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG) #TODO Set to info before merge in prod
 logger.addHandler(logging.StreamHandler()) # TODO Remove logger before merge in prod
 
 class Model():
   global logger
   _Tokenizer = AutoTokenizer
   _Model     = AutoModelForCausalLM
-  _Config    = GPTNeoConfig
   _logger    = logger # TODO Remove logger before merge in prod
 
 
@@ -123,7 +133,6 @@ class Model():
     self.is_cuda_available = torch.cuda.is_available()
     self.is_gpu_enabled    = False
 
-    self._logger.info("Model to load: " + p_model_name) #TODO To remove before merge in prod
     if self._load() == False:
       self._download()
     if p_use_gpu == True and self.is_cuda_available == True:
@@ -152,25 +161,17 @@ class Model():
     
     if self.is_gpu_enabled == True:
       model_input = model_input.to("cuda")
+      attention_mask = attention_mask.to("cuda")
 
     model_output = self._Model.generate(input_ids       = model_input,
                                         attention_mask  = attention_mask,
                                         **p_parameters)
     generated_text = self._Tokenizer.decode(model_output[0], skip_special_tokens=True)
-    self._empty_gpu_cache()
+
+    if self.is_gpu_enabled == True:
+      self._empty_gpu_cache()
+
     return generated_text
-
-
-#------------------------------------------------------------------------------
-#-- reload_config
-#------------------------------------------------------------------------------
-  def reload_config(self):
-    try:
-      self._Model = AutoModelForCausalLM.from_pretrained(self._model_path)
-    except:
-      return False
-
-    return True
 
 
 #------------------------------------------------------------------------------
@@ -221,6 +222,7 @@ class Model():
 #-- _enable_gpu
 #------------------------------------------------------------------------------
   def _enable_gpu(self):
+    self._logger.info("Enabling gpu")
     self._empty_gpu_cache()
     self._get_gpu_info()
 
@@ -229,28 +231,39 @@ class Model():
       self.is_gpu_enabled = True
       self._get_gpu_info()
 
-    except RuntimeError:
-      self._logger.error("A runtime error happened!")
+    except:
+      self._logger.error("An error happened while using the GPU!")
       self._logger.info("Falling back to CPU.")
-      self._model.to("cpu")
-      self._empty_gpu_cache()
-
-    finally:
-      self.is_gpu_enabled = False
+      self._disable_gpu()
 
 
+#------------------------------------------------------------------------------
+#-- _disable_gpu
+#------------------------------------------------------------------------------
+  def _disable_gpu(self):
+    self._Model.to("cpu")
+    self._empty_gpu_cache()
+    self.is_gpu_enabled = False
+
+
+#------------------------------------------------------------------------------
+#-- _empty_gpu_cache
+#------------------------------------------------------------------------------
   def _empty_gpu_cache(self):
-    self._logger.info("Clearing GPU cache")
+    self._logger.debug("Clearing GPU cache")
     torch.cuda.empty_cache()
 
 
+#------------------------------------------------------------------------------
+#-- _get_gpu_info
+#------------------------------------------------------------------------------
   def _get_gpu_info(self):
-    self._logger.info("---------------Memory allocated---------------")
-    self._logger.info(torch.cuda.memory_allocated())
-    self._logger.info("---------------Max memory allocated---------------")
-    self._logger.info(torch.cuda.max_memory_allocated())
-    self._logger.info("---------------Memory reserved---------------")
-    self._logger.info(torch.cuda.memory_reserved())
-    self._logger.info("---------------Max memory reserved---------------")
-    self._logger.info(torch.cuda.max_memory_reserved())
+    self._logger.debug("---------------Memory allocated---------------")
+    self._logger.debug(torch.cuda.memory_allocated())
+    self._logger.debug("---------------Max memory allocated---------------")
+    self._logger.debug(torch.cuda.max_memory_allocated())
+    self._logger.debug("---------------Memory reserved---------------")
+    self._logger.debug(torch.cuda.memory_reserved())
+    self._logger.debug("---------------Max memory reserved---------------")
+    self._logger.debug(torch.cuda.max_memory_reserved())
 
