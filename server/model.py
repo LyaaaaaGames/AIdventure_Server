@@ -102,6 +102,8 @@
 #--
 #--  - 21/02/2022 Lyaaaaa
 #--    - Update generate_text to add a fallback during the generation with the GPU.
+#--    - Added logging message in generate_text and _disable_gpu.
+#--    - Updated generate_text to catch the error in the except.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -169,7 +171,8 @@ class Model():
         model_output = self._Model.generate(input_ids       = model_input,
                                             attention_mask  = attention_mask,
                                             **p_parameters)
-      except:
+      except Exception as error:
+        self._logger.error("Error while generating with the GPU:", error)
         model_output = None
         model_input    = model_input.to("cpu")
         attention_mask = attention_mask.to("cpu")
@@ -255,6 +258,7 @@ class Model():
 #-- _disable_gpu
 #------------------------------------------------------------------------------
   def _disable_gpu(self):
+    self._logger.info("Falling back to CPU.")
     self._Model.to("cpu")
     self._empty_gpu_cache()
     self.is_gpu_enabled = False
