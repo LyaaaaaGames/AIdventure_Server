@@ -1,7 +1,7 @@
 # AIdventure_Server
 The server on which connects AIdventure game.
 
-# How to install AIdventure_Server on a linux server
+## How to install AIdventure_Server on a linux server
 
 1. Clone the repository `git clone git@github.com:LyaaaaaGames/AIdventure_Server.git`
 2. Run the install.sh `./install.sh`
