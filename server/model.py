@@ -4,7 +4,7 @@
 #-- Author : Lyaaaaaaaaaaaaaaa
 #--
 #-- Portability Issues (feel free to remove this part if there is none):
-#--  -
+#--  - Cuda might not be available depending of the environment and OS.
 #--
 #-- Implementation Notes:
 #--  - This class will handle all the task related to the AI model.
@@ -99,6 +99,9 @@
 #---   - Updated _empty_gpu_cache and _get_gpu_info to use logger in debug mode.
 #--    - Set logging level to DEBUG
 #--    - Set logging to overwrite the log file.
+#--
+#--  - 21/02/2022 Lyaaaaa
+#--    - Update generate_text to add a fallback during the generation with the GPU.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -160,12 +163,23 @@ class Model():
     p_parameters["max_length"] += len(model_input[0])
     
     if self.is_gpu_enabled == True:
-      model_input = model_input.to("cuda")
+      model_input    = model_input.to("cuda")
       attention_mask = attention_mask.to("cuda")
+      try:
+        model_output = self._Model.generate(input_ids       = model_input,
+                                            attention_mask  = attention_mask,
+                                            **p_parameters)
+      except:
+        model_output = None
+        model_input    = model_input.to("cpu")
+        attention_mask = attention_mask.to("cpu")
+        self._disable_gpu()
 
-    model_output = self._Model.generate(input_ids       = model_input,
-                                        attention_mask  = attention_mask,
-                                        **p_parameters)
+    if self.is_gpu_enabled == False:
+      model_output = self._Model.generate(input_ids       = model_input,
+                                          attention_mask  = attention_mask,
+                                          **p_parameters)
+
     generated_text = self._Tokenizer.decode(model_output[0], skip_special_tokens=True)
 
     if self.is_gpu_enabled == True:
