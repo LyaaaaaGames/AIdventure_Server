@@ -8,3 +8,4 @@ dependencies:
     - websockets==10.0
     - torch==1.10.1
     - transformers==4.15
+    - sentencepiece
