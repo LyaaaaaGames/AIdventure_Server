@@ -61,11 +61,16 @@
 #--  - 29/12/2021 Lyaaaaa
 #--    - Imported download_file function from downloader
 #--    - Updated handle_request to handle Request.DOWNLOAD_MODEL case.
+#--
+#--  - 21/02/2022 Lyaaaaa
+#--    - Added config import and uses its variables.
+#--    - Updated init_logger to work.
 #------------------------------------------------------------------------------
 
 import asyncio
 import websockets
 import logging
+import config
 
 from json_utils import Json_Utils
 from request    import Request
@@ -73,8 +78,8 @@ from model      import Model
 from downloader import download_file
 
 
-HOST = "localhost"
-PORT = 9999
+HOST = config.HOST
+PORT = config.PORT
 
 model = None
 
@@ -82,8 +87,13 @@ model = None
 # init_logger
 #------------------------------------------------------------------------------
 def init_logger():
+  global logger
+  logging.basicConfig(filename = config.LOG_FILENAME,
+                      filemode = config.LOG_FILEMODE,
+                      format   = '%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                      datefmt  = '%H:%M:%S')
   logger = logging.getLogger("websockets.server")
-  logger.setLevel(logging.ERROR)
+  logger.setLevel(config.LOG_LEVEL)
   logger.addHandler(logging.StreamHandler())
 
 
