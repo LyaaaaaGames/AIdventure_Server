@@ -17,9 +17,12 @@
 #-- Changelog:
 #--   21/02/2022 Lyaaaaa
 #--     - Created the script.
+#--
+#--   22/02/2022 Lyaaaaa
+#--     - Fix the paths being broken.
 #---------------------------------------------------------------------------
 
-environment_prefix="server/miniconda/envs/aidventure_auto/"
-python_bin="/bin/python"
+environment_prefix="server/miniconda/envs/aidventure/"
+python_bin="bin/python"
 
 ./$environment_prefix$python_bin server/server.py

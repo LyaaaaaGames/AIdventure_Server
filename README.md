@@ -7,7 +7,7 @@ The server on which connects AIdventure game.
 2. Run the install.sh `./install.sh`
 3. Run the run.sh `./run.sh`
 
-*You might have to give the scripts the executable permission with `chmod +x script_name`
+You might have to give the scripts the executable permission with `chmod +x script_name`
 
 ## More info
 
