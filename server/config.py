@@ -16,12 +16,15 @@
 #-- Changelog:
 #--   21/02/2022 Lyaaaaa
 #--     - Created the file.
+#--
+#--   24/02/2022 Lyaaaaa
+#--     - Set HOST default value to 0.0.0.0
 #---------------------------------------------------------------------------
 
 import logging
 
 # Network
-HOST = "localhost"
+HOST = "0.0.0.0"
 PORT = 9999
 
 # Logs
