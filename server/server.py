@@ -1,5 +1,6 @@
 #------------------------------------------------------------------------------
-#-- Copyright (c) 2021 Lyaaaaaaaaaaaaaaa
+#-- Copyright (c) 2021-2022 LyaaaaaGames
+#-- Copyright (c) 2022 AIdventure_Server contributors
 #--
 #-- Author : Lyaaaaaaaaaaaaaaa
 #--
@@ -83,11 +84,16 @@
 #--
 #--  - 25/01/2022 Lyaaaaa
 #--    - Set logging level to info instead of debug.
+#--
+#--  - 21/02/2022 Lyaaaaa
+#--    - Added config import and uses its variables.
+#--    - Updated init_logger to work.
 #------------------------------------------------------------------------------
 
 import asyncio
 import websockets
 import logging
+import config
 
 from json_utils import Json_Utils
 from request    import Request
@@ -95,33 +101,31 @@ from model      import Model
 from downloader import download_file
 
 
-HOST = "localhost"
-PORT = 9999
+HOST = config.HOST
+PORT = config.PORT
 
-model  = None
-logger = None
+model = None
 
 #------------------------------------------------------------------------------
 # init_logger
 #------------------------------------------------------------------------------
 def init_logger():
   global logger
-  logging.basicConfig(filename = "server/server_logs.text",
-                      filemode = 'a',
+  logging.basicConfig(filename = config.LOG_FILENAME,
+                      filemode = config.LOG_FILEMODE,
                       format   = '%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                       datefmt  = '%H:%M:%S')
   logger = logging.getLogger("websockets.server")
-  logger.setLevel(logging.INFO)
+  logger.setLevel(config.LOG_LEVEL)
   logger.addHandler(logging.StreamHandler())
+
 
 #------------------------------------------------------------------------------
 # handler
 #------------------------------------------------------------------------------
 async def handler(p_websocket, path):
-  global logger
-
   client_ip = p_websocket.remote_address[0]
-  logger.info("Client " + client_ip + " connected")
+  print("Client " + client_ip + " connected")
 
   try:
     async for message in p_websocket:
@@ -132,11 +136,11 @@ async def handler(p_websocket, path):
         await p_websocket.send(data_to_send)
 
   except websockets.exceptions.ConnectionClosedOK:
-    logger.info("Closing the server")
+    print("Closing the server")
     shutdown_server()
 
   except websockets.exceptions.ConnectionClosedError:
-    logger.info("Closing the server")
+    print("Closing the server")
     shutdown_server()
 
 
