@@ -88,12 +88,19 @@
 #--  - 21/02/2022 Lyaaaaa
 #--    - Added config import and uses its variables.
 #--    - Updated init_logger to work.
+#--
+#--  - 24/04/2022 Lyaaaaa
+#--    - Extracted init_logger into the new logger.py file.
+#--    - Imported logger and replaced logger variable by logger.log.
+#--    - Updated main to now call logger.init_logger instead of init_logger.
 #------------------------------------------------------------------------------
 
 import asyncio
 import websockets
-import logging
+
+# Custom imports
 import config
+import logger
 
 from json_utils import Json_Utils
 from request    import Request
@@ -105,19 +112,6 @@ HOST = config.HOST
 PORT = config.PORT
 
 model = None
-
-#------------------------------------------------------------------------------
-# init_logger
-#------------------------------------------------------------------------------
-def init_logger():
-  global logger
-  logging.basicConfig(filename = config.LOG_FILENAME,
-                      filemode = config.LOG_FILEMODE,
-                      format   = '%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                      datefmt  = '%H:%M:%S')
-  logger = logging.getLogger("websockets.server")
-  logger.setLevel(config.LOG_LEVEL)
-  logger.addHandler(logging.StreamHandler())
 
 
 #------------------------------------------------------------------------------
@@ -149,7 +143,6 @@ async def handler(p_websocket, path):
 #------------------------------------------------------------------------------
 def handle_request(p_websocket, p_data : dict):
   global model
-  global logger
 
   request = p_data['request']
 
@@ -178,8 +171,8 @@ def handle_request(p_websocket, p_data : dict):
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)
 
-    logger.info("Is CUDA available: " + format(model.is_cuda_available))
-    logger.info("Is GPU acceleration enabled: " + format(model.is_gpu_enabled))
+    logger.log.info("Is CUDA available: " + format(model.is_cuda_available))
+    logger.log.info("Is GPU acceleration enabled: " + format(model.is_gpu_enabled))
     return p_data
 
   elif request == Request.DOWNLOAD_MODEL.value:
@@ -205,7 +198,7 @@ def shutdown_server():
 # main
 #------------------------------------------------------------------------------
 async def main():
-  init_logger()
+  logger.init_logger()
   async with websockets.serve(handler, HOST, PORT):
       print("Server started ws://%s:%s" % (HOST, PORT))
       await asyncio.Future()

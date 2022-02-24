@@ -105,28 +105,22 @@
 #--    - Update generate_text to add a fallback during the generation with the GPU.
 #--    - Added logging message in generate_text and _disable_gpu.
 #--    - Updated generate_text to catch the error in the except.
+#--
+#--  - 24/02/2022 Lyaaaaa
+#--    - Replaced the init of logging by the import of the new script logger.
+#--    - Replaced self._logger by logger.log.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import os
 import torch
-import logging
 
-
-global logger
-logging.basicConfig(filename = "server/server_logs.text",
-                    filemode = 'w',
-                    format   = '%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    datefmt  = '%H:%M:%S')
-logger = logging.getLogger("websockets.server")
-logger.setLevel(logging.DEBUG) #TODO Set to info before merge in prod
-logger.addHandler(logging.StreamHandler()) # TODO Remove logger before merge in prod
+# Custom imports
+import logger
 
 class Model():
-  global logger
   _Tokenizer = AutoTokenizer
   _Model     = AutoModelForCausalLM
-  _logger    = logger # TODO Remove logger before merge in prod
 
 
 #------------------------------------------------------------------------------
@@ -144,7 +138,7 @@ class Model():
     if p_use_gpu == True and self.is_cuda_available == True:
       self._enable_gpu()
     else:
-      self._logger.info("Model successfully loaded from local file")
+      logger.log.info("Model successfully loaded from local file")
 
 
 #------------------------------------------------------------------------------
@@ -173,7 +167,7 @@ class Model():
                                             attention_mask  = attention_mask,
                                             **p_parameters)
       except Exception as error:
-        self._logger.error("Error while generating with the GPU:", error)
+        logger.log.error("Error while generating with the GPU:", error)
         model_output = None
         model_input    = model_input.to("cpu")
         attention_mask = attention_mask.to("cpu")
@@ -200,7 +194,7 @@ class Model():
     try:
       self._Tokenizer = AutoTokenizer.from_pretrained(self._tokenizer_path)
     except:
-      self._logger.info("Token file in '" + self._tokenizer_path + "' not found.")
+      logger.log.info("Token file in '" + self._tokenizer_path + "' not found.")
       return False
 
     try:
@@ -225,11 +219,11 @@ class Model():
 #------------------------------------------------------------------------------
   def _download(self):
     model_name = self._model_name
-    self._logger.info("Trying to download the tokenizer...")
+    logger.log.info("Trying to download the tokenizer...")
     self._Tokenizer = AutoTokenizer.from_pretrained(model_name,
                                                     cache_dir       = "cache",
                                                     resume_download = True)
-    self._logger.info("Trying to download the model...")
+    logger.log.info("Trying to download the model...")
     self._Model     = AutoModelForCausalLM.from_pretrained(model_name,
                                                            cache_dir       = "cache",
                                                            resume_download = True)
@@ -240,7 +234,7 @@ class Model():
 #-- _enable_gpu
 #------------------------------------------------------------------------------
   def _enable_gpu(self):
-    self._logger.info("Enabling gpu")
+    logger.log.info("Enabling gpu")
     self._empty_gpu_cache()
     self._get_gpu_info()
 
@@ -250,8 +244,8 @@ class Model():
       self._get_gpu_info()
 
     except:
-      self._logger.error("An error happened while using the GPU!")
-      self._logger.info("Falling back to CPU.")
+      logger.log.error("An error happened while using the GPU!")
+      logger.log.info("Falling back to CPU.")
       self._disable_gpu()
 
 
@@ -259,7 +253,7 @@ class Model():
 #-- _disable_gpu
 #------------------------------------------------------------------------------
   def _disable_gpu(self):
-    self._logger.info("Falling back to CPU.")
+    logger.log.info("Falling back to CPU.")
     self._Model.to("cpu")
     self._empty_gpu_cache()
     self.is_gpu_enabled = False
@@ -269,7 +263,7 @@ class Model():
 #-- _empty_gpu_cache
 #------------------------------------------------------------------------------
   def _empty_gpu_cache(self):
-    self._logger.debug("Clearing GPU cache")
+    logger.log.debug("Clearing GPU cache")
     torch.cuda.empty_cache()
 
 
@@ -277,12 +271,12 @@ class Model():
 #-- _get_gpu_info
 #------------------------------------------------------------------------------
   def _get_gpu_info(self):
-    self._logger.debug("---------------Memory allocated---------------")
-    self._logger.debug(torch.cuda.memory_allocated())
-    self._logger.debug("---------------Max memory allocated---------------")
-    self._logger.debug(torch.cuda.max_memory_allocated())
-    self._logger.debug("---------------Memory reserved---------------")
-    self._logger.debug(torch.cuda.memory_reserved())
-    self._logger.debug("---------------Max memory reserved---------------")
-    self._logger.debug(torch.cuda.max_memory_reserved())
+    logger.log.debug("---------------Memory allocated---------------")
+    logger.log.debug(torch.cuda.memory_allocated())
+    logger.log.debug("---------------Max memory allocated---------------")
+    logger.log.debug(torch.cuda.max_memory_allocated())
+    logger.log.debug("---------------Memory reserved---------------")
+    logger.log.debug(torch.cuda.memory_reserved())
+    logger.log.debug("---------------Max memory reserved---------------")
+    logger.log.debug(torch.cuda.max_memory_reserved())
 
