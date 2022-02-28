@@ -1,5 +1,6 @@
 #------------------------------------------------------------------------------
-#-- Copyright (c) 2021 Lyaaaaaaaaaaaaaaa
+#-- Copyright (c) 2021-2022 LyaaaaaGames
+#-- Copyright (c) 2022 AIdventure_Server contributors
 #--
 #-- Author : Lyaaaaaaaaaaaaaaa
 #--
@@ -60,11 +61,46 @@
 #--  - 29/12/2021 Lyaaaaa
 #--    - Imported download_file function from downloader
 #--    - Updated handle_request to handle Request.DOWNLOAD_MODEL case.
+#--
+#--  - 17/01/2022 Lyaaaaa
+#--    - Updater init_logger to write in a file
+#--    - Updated handle_request to write in logs if CUDA is available.
+#--
+#--  - 18/01/2022 Lyaaaaa
+#--    - Updated init_logger.
+#--    - Remove logger.info from handle_request.
+#--
+#--  - 19/01/2022 Lyaaaaa
+#--    - Updated init_logger to init the global variable logger and set the logging
+#--        level to INFO.
+#--    - Updated handler and handle_request to use logger to log messages.
+#--
+#--  - 20/01/2022 Lyaaaaa
+#--    - Added a logger.info to log if the GPU is enabled for the generation.
+#--
+#--  - 21/01/2022 Lyaaaaa
+#--    - Updated handle_request to get p_data['use_gpu'] value in the LOAD_MODEL
+#--        case.
+#--
+#--  - 25/01/2022 Lyaaaaa
+#--    - Set logging level to info instead of debug.
+#--
+#--  - 21/02/2022 Lyaaaaa
+#--    - Added config import and uses its variables.
+#--    - Updated init_logger to work.
+#--
+#--  - 24/04/2022 Lyaaaaa
+#--    - Extracted init_logger into the new logger.py file.
+#--    - Imported logger and replaced logger variable by logger.log.
+#--    - Updated main to now call logger.init_logger instead of init_logger.
 #------------------------------------------------------------------------------
 
 import asyncio
 import websockets
-import logging
+
+# Custom imports
+import config
+import logger
 
 from json_utils import Json_Utils
 from request    import Request
@@ -72,18 +108,10 @@ from model      import Model
 from downloader import download_file
 
 
-HOST = "localhost"
-PORT = 9999
+HOST = config.HOST
+PORT = config.PORT
 
 model = None
-
-#------------------------------------------------------------------------------
-# init_logger
-#------------------------------------------------------------------------------
-def init_logger():
-  logger = logging.getLogger("websockets.server")
-  logger.setLevel(logging.ERROR)
-  logger.addHandler(logging.StreamHandler())
 
 
 #------------------------------------------------------------------------------
@@ -136,12 +164,15 @@ def handle_request(p_websocket, p_data : dict):
     shutdown_server()
 
   elif request == Request.LOAD_MODEL.value:
-    model_name        = p_data['model_name']
-    model             = Model(model_name)
+    model_name = p_data['model_name']
+    use_gpu    = p_data['use_gpu']
+    model      = Model(model_name, use_gpu)
 
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)
 
+    logger.log.info("Is CUDA available: " + format(model.is_cuda_available))
+    logger.log.info("Is GPU acceleration enabled: " + format(model.is_gpu_enabled))
     return p_data
 
   elif request == Request.DOWNLOAD_MODEL.value:
@@ -167,7 +198,7 @@ def shutdown_server():
 # main
 #------------------------------------------------------------------------------
 async def main():
-  init_logger()
+  logger.init_logger()
   async with websockets.serve(handler, HOST, PORT):
       print("Server started ws://%s:%s" % (HOST, PORT))
       await asyncio.Future()
