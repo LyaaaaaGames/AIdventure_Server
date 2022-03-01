@@ -13,6 +13,9 @@
 #-- Changelog:
 #--  - 18/02/2022 Lyaaaaa
 #--    - Created the file.
+#--
+#--  - 01/03/2022 Lyaaaaa
+#--    - Rewrote translate_text
 #------------------------------------------------------------------------------
 
 from model import Model
@@ -22,16 +25,10 @@ class Translator(Model):
 #------------------------------------------------------------------------------
 #-- translate_text
 #------------------------------------------------------------------------------
-  def translate_text(self, p_input : str):
-    inputs         = self._Tokenizer(p_input, return_tensors="pt")
-    input_ids      = inputs.input_ids
-    attention_mask = inputs.attention_mask
+  def translate_text(self, p_input : str, p_parameters = {}):
+    inputs  = self._Tokenizer([p_input], return_tensors = "pt")
+    outputs = self._Model.generate(**inputs, **p_parameters)
 
-    outputs = self._Model.generate(input_ids,
-                                   attention_mask=attention_mask,
-                                   max_length=40,
-                                   num_beams=4,
-                                   early_stopping=True)
-    generated_text = self._Tokenizer.decode(outputs[0], skip_special_tokens = True)
+    generated_text = self._Tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
     return generated_text
