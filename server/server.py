@@ -66,6 +66,15 @@
 #--    - Added the Generator and Model_Type imports.
 #--    - Renamed model into generator.
 #--    - Replaced the Model class by the Generator class.
+#--
+#--  - 01/03/2022 Lyaaaaa
+#--    - Imported translator
+#--    - Added translator object
+#--    - Updated handler function.
+#--      - Replaced the return p_data in the if by a single one at the end.
+#--      - Added global translator.
+#--      - Added the possibility to load either a generation or translation model.
+#--      - Added a TEXT_TRANSLATION case.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -75,6 +84,7 @@ import logging
 from json_utils import Json_Utils
 from request    import Request
 from generator  import Generator
+from translator import Translator
 from model_type import Model_Type
 from downloader import download_file
 
@@ -82,7 +92,8 @@ from downloader import download_file
 HOST = "localhost"
 PORT = 9999
 
-generator = None
+generator  = None
+translator = None
 
 #------------------------------------------------------------------------------
 # init_logger
@@ -122,10 +133,11 @@ async def handler(p_websocket, path):
 #------------------------------------------------------------------------------
 def handle_request(p_websocket, p_data : dict):
   global generator
+  global translator
 
   request = p_data['request']
 
-  if   request == Request.TEXT_GENERATION.value:
+  if request == Request.TEXT_GENERATION.value:
     prompt     = p_data['prompt']
     context    = p_data['context']
     memory     = p_data['memory']
@@ -137,19 +149,22 @@ def handle_request(p_websocket, p_data : dict):
                                                        parameters)
     p_data = Json_Utils.json_to_string(p_data)
 
-    return p_data
 
   elif request == Request.SHUTDOWN.value:
     shutdown_server()
 
   elif request == Request.LOAD_MODEL.value:
-    model_name        = p_data['model_name']
-    generator         = Generator(model_name, Model_Type.GENERATION.value)
+    if p_data["model_type"] == Model_Type.GENERATION.value:
+      model_name = p_data['model_name']
+      generator  = Generator(model_name, Model_Type.GENERATION.value)
+
+    elif p_data["model_type"] == Model_Type.TRANSLATION.value:
+      model_name = p_data["model_name"]
+      translator = Translator(model_name, Model_Type.TRANSLATION.value)
 
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)
 
-    return p_data
 
   elif request == Request.DOWNLOAD_MODEL.value:
     url        = p_data["url"]
@@ -160,7 +175,13 @@ def handle_request(p_websocket, p_data : dict):
     p_data            = Json_Utils.json_to_string(p_data)
 
 
-    return p_data
+  elif request == Request.TEXT_TRANSLATION.value:
+    prompt = p_data['prompt']
+    p_data["translated_text"] = translator.translate_text(prompt)
+    p_data = Json_Utils().json_to_string(p_data)
+
+
+  return p_data
 
 
 #------------------------------------------------------------------------------
