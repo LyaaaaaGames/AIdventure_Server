@@ -10,6 +10,8 @@
 #--  - The server receives data encoded in utf-8 bytes. But the function
 #--      WebSocketServerProtocol.send just needs a string and encodes by itself.
 #--      See the [doc](https://websockets.readthedocs.io/en/stable/api/server.html#websockets.server.WebSocketServerProtocol.send)
+#--  - The server uses two models for the translation instead of one handling
+#--      multiple languages. It trades performances for a better translation.
 #-- Anticipated changes:
 #--  - Make shutdown_server function cleaner.
 #--  - In handler no longer shutdown the server when an user disconnect (because
@@ -75,6 +77,12 @@
 #--      - Added global translator.
 #--      - Added the possibility to load either a generation or translation model.
 #--      - Added a TEXT_TRANSLATION case.
+#--
+#--  - 02/03/2022 Lyaaaaa
+#--    - Replaced translator by from_eng_translator and to_eng_translator as the
+#--        server will need to translate in two ways.
+#--    - Added translate function
+#--    - Fixed shutdown_server's indentation.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -92,8 +100,9 @@ from downloader import download_file
 HOST = "localhost"
 PORT = 9999
 
-generator  = None
-translator = None
+generator           = None
+from_eng_translator = None
+to_eng_translator   = None
 
 #------------------------------------------------------------------------------
 # init_logger
@@ -133,7 +142,8 @@ async def handler(p_websocket, path):
 #------------------------------------------------------------------------------
 def handle_request(p_websocket, p_data : dict):
   global generator
-  global translator
+  global from_eng_translator
+  global to_eng_translator
 
   request = p_data['request']
 
@@ -159,8 +169,11 @@ def handle_request(p_websocket, p_data : dict):
       generator  = Generator(model_name, Model_Type.GENERATION.value)
 
     elif p_data["model_type"] == Model_Type.TRANSLATION.value:
-      model_name = p_data["model_name"]
-      translator = Translator(model_name, Model_Type.TRANSLATION.value)
+      model_name = p_data["to_eng_model"]
+      to_eng_translator = Translator(model_name, Model_Type.TRANSLATION.value)
+
+      model_name = p_data["from_eng_model"]
+      from_eng_translator = Translator(model_name, Model_Type.TRANSLATION.value)
 
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)
@@ -176,19 +189,37 @@ def handle_request(p_websocket, p_data : dict):
 
 
   elif request == Request.TEXT_TRANSLATION.value:
-    prompt = p_data['prompt']
-    p_data["translated_text"] = translator.translate_text(prompt)
+    prompt = p_data["prompt"]
+    to_eng = p_data["to_eng"]
+
+    p_data["translated_text"] = translate(prompt, to_eng)
     p_data = Json_Utils().json_to_string(p_data)
 
-
   return p_data
+
+
+#------------------------------------------------------------------------------
+# translate
+#------------------------------------------------------------------------------
+def translate(p_prompt : str, p_to_eng : bool = True):
+  global from_eng_translator
+  global to_eng_translator
+
+  translated_text = None
+
+  if p_to_eng == True:
+    translated_text = to_eng_translator.translate_text(p_prompt)
+  else:
+    translated_text = from_eng_translator.translate_text(p_prompt)
+
+  return translated_text
 
 
 #------------------------------------------------------------------------------
 # shutdown_server
 #------------------------------------------------------------------------------
 def shutdown_server():
-    exit()
+  exit()
 
 
 #------------------------------------------------------------------------------
