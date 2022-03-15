@@ -8,7 +8,7 @@
 #--  - The class handling the text translation.
 #--
 #-- Anticipated changes:
-#--  -
+#--  - Support GPU on the translator
 #--
 #-- Changelog:
 #--  - 18/02/2022 Lyaaaaa
@@ -16,6 +16,9 @@
 #--
 #--  - 01/03/2022 Lyaaaaa
 #--    - Rewrote translate_text
+#--
+#--  - 03/03/2022 Lyaaaaa
+#--    - translate_text now returns a string instead of a list.
 #------------------------------------------------------------------------------
 
 from model import Model
@@ -31,4 +34,4 @@ class Translator(Model):
 
     generated_text = self._Tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
-    return generated_text
+    return generated_text[0]

@@ -16,6 +16,8 @@
 #--  - Make shutdown_server function cleaner.
 #--  - In handler no longer shutdown the server when an user disconnect (because
 #--      once the multiplayer is implemented it will create troubles).
+#--  - Translate context, memory and prompt in the same call instead of three different.
+#--      test if it is better for performances.
 #--
 #-- Changelog:
 #--  - 27/08/2021 Lyaaaaa
@@ -83,6 +85,9 @@
 #--        server will need to translate in two ways.
 #--    - Added translate function
 #--    - Fixed shutdown_server's indentation.
+#--
+#--  - 15/03/2022 Lyaaaaa
+#--    - Renamed translate into translate_text.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -153,10 +158,12 @@ def handle_request(p_websocket, p_data : dict):
     memory     = p_data['memory']
     parameters = p_data['parameters']
 
-    p_data['generated_text'] = generator.generate_text(prompt,
-                                                       context,
-                                                       memory,
-                                                       parameters)
+    generated_text = generator.generate_text(prompt,
+                                             context,
+                                             memory,
+                                             parameters)
+
+    p_data["generated_text"] = generated_text
     p_data = Json_Utils.json_to_string(p_data)
 
 
@@ -192,7 +199,7 @@ def handle_request(p_websocket, p_data : dict):
     prompt = p_data["prompt"]
     to_eng = p_data["to_eng"]
 
-    p_data["translated_text"] = translate(prompt, to_eng)
+    p_data["translated_text"] = translate_text(prompt, to_eng)
     p_data = Json_Utils().json_to_string(p_data)
 
   return p_data
@@ -201,16 +208,18 @@ def handle_request(p_websocket, p_data : dict):
 #------------------------------------------------------------------------------
 # translate
 #------------------------------------------------------------------------------
-def translate(p_prompt : str, p_to_eng : bool = True):
+def translate_text(p_prompt : str, p_to_eng : bool = True):
   global from_eng_translator
   global to_eng_translator
 
   translated_text = None
-
-  if p_to_eng == True:
-    translated_text = to_eng_translator.translate_text(p_prompt)
+  if p_prompt == "":
+    translated_text = ""
   else:
-    translated_text = from_eng_translator.translate_text(p_prompt)
+    if p_to_eng == True:
+      translated_text = to_eng_translator.translate_text(p_prompt)
+    else:
+      translated_text = from_eng_translator.translate_text(p_prompt)
 
   return translated_text
 
