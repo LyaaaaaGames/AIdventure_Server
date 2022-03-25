@@ -19,6 +19,9 @@
 #--
 #--   24/02/2022 Lyaaaaa
 #--     - Set HOST default value to 0.0.0.0
+#--
+#--   25/03/2022 Lyaaaaa
+#--     - Set LOG_FILEMODE default valie to 'a'
 #---------------------------------------------------------------------------
 
 import logging
@@ -29,5 +32,5 @@ PORT = 9999
 
 # Logs
 LOG_FILENAME = "server_logs.text"
-LOG_FILEMODE = "w"
+LOG_FILEMODE = "a"
 LOG_LEVEL    = logging.INFO
