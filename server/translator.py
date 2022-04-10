@@ -9,6 +9,8 @@
 #--
 #-- Anticipated changes:
 #--  - Support GPU on the translator
+#--  - Make sure the inputs' length isn't longer than the max sequence length
+#--      specified for the model.
 #--
 #-- Changelog:
 #--  - 18/02/2022 Lyaaaaa
