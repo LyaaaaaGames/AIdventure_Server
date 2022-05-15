@@ -16,8 +16,6 @@
 #--  - Make shutdown_server function cleaner.
 #--  - In handler no longer shutdown the server when an user disconnect (because
 #--      once the multiplayer is implemented it will create troubles).
-#--  - Translate context, memory and prompt in the same call instead of three different.
-#--      test if it is better for performances.
 #--
 #-- Changelog:
 #--  - 27/08/2021 Lyaaaaa
@@ -65,34 +63,14 @@
 #--  - 29/12/2021 Lyaaaaa
 #--    - Imported download_file function from downloader
 #--    - Updated handle_request to handle Request.DOWNLOAD_MODEL case.
-#--
-#--  - 18/02/2022 Lyaaaaa
-#--    - Added the Generator and Model_Type imports.
-#--    - Renamed model into generator.
-#--    - Replaced the Model class by the Generator class.
-#--
-#--  - 01/03/2022 Lyaaaaa
-#--    - Imported translator
-#--    - Added translator object
-#--    - Updated handler function.
-#--      - Replaced the return p_data in the if by a single one at the end.
-#--      - Added global translator.
-#--      - Added the possibility to load either a generation or translation model.
-#--      - Added a TEXT_TRANSLATION case.
-#--
-#--  - 02/03/2022 Lyaaaaa
-#--    - Replaced translator by from_eng_translator and to_eng_translator as the
-#--        server will need to translate in two ways.
-#--    - Added translate function
-#--    - Fixed shutdown_server's indentation.
-#--
-#--  - 15/03/2022 Lyaaaaa
-#--    - Renamed translate into translate_text.
 #------------------------------------------------------------------------------
 
 import asyncio
 import websockets
-import logging
+
+# Custom imports
+import config
+import logger
 
 from json_utils import Json_Utils
 from request    import Request
@@ -102,8 +80,8 @@ from model_type import Model_Type
 from downloader import download_file
 
 
-HOST = "localhost"
-PORT = 9999
+HOST = config.HOST
+PORT = config.PORT
 
 generator           = None
 from_eng_translator = None
@@ -166,6 +144,7 @@ def handle_request(p_websocket, p_data : dict):
     p_data["generated_text"] = generated_text
     p_data = Json_Utils.json_to_string(p_data)
 
+    return p_data
 
   elif request == Request.SHUTDOWN.value:
     shutdown_server()
@@ -173,7 +152,8 @@ def handle_request(p_websocket, p_data : dict):
   elif request == Request.LOAD_MODEL.value:
     if p_data["model_type"] == Model_Type.GENERATION.value:
       model_name = p_data['model_name']
-      generator  = Generator(model_name, Model_Type.GENERATION.value)
+      use_gpu    = p_data['use_gpu']
+      generator  = Generator(model_name, Model_Type.GENERATION.value, use_gpu)
 
     elif p_data["model_type"] == Model_Type.TRANSLATION.value:
       model_name = p_data["to_eng_model"]
@@ -185,6 +165,9 @@ def handle_request(p_websocket, p_data : dict):
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)
 
+    logger.log.info("Is CUDA available: " + format(generator.is_cuda_available))
+    logger.log.info("Is GPU acceleration enabled: " + format(generator.is_gpu_enabled))
+    return p_data
 
   elif request == Request.DOWNLOAD_MODEL.value:
     url        = p_data["url"]
@@ -235,7 +218,7 @@ def shutdown_server():
 # main
 #------------------------------------------------------------------------------
 async def main():
-  init_logger()
+  logger.init_logger()
   async with websockets.serve(handler, HOST, PORT):
       print("Server started ws://%s:%s" % (HOST, PORT))
       await asyncio.Future()
