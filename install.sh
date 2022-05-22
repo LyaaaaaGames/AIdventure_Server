@@ -19,7 +19,10 @@
 #--     - Created the script.
 #--
 #--   24/02/2022 Lyaaaaa
-#--     - Updated the script to give the option to install cuda or not.
+#--     - Updated the script to give the option to install cuda or not
+#--
+#--   22/05/2022 Lyaaaaa
+#--     - Uncommented "download_conda" and "install_conda" as it breaks the installer. Oups...
 #---------------------------------------------------------------------------
 
 mini_conda_link="https://repo.anaconda.com/miniconda/Miniconda3-py39_4.10.3-Linux-x86_64.sh"
@@ -54,8 +57,8 @@ function create_environment()
   ./$conda_bin_path env create --file $conda_environment_file
 }
 
-# download_conda
-# install_conda
+download_conda
+install_conda
 
 # Not in a function because clear doesn't work in functions. No clue why.
 loop=true
