@@ -13,6 +13,10 @@
 #-- Changelog:
 #--  - 18/02/2022 Lyaaaaa
 #--    - Created the file.
+#--
+#--  - 22/05/2022 Lyaaaaa
+#--    - Updated generate_text to support the gpu once again. Simplified the
+#--        script by merging all the models input into a single dict "model_input".
 #------------------------------------------------------------------------------
 
 from model import Model
@@ -29,14 +33,14 @@ class Generator(Model):
                     p_parameters = None):
 
     model_input    = p_memory + p_context + p_prompt
-    tokens         = self._Tokenizer(model_input, return_tensors = "pt")
-    attention_mask = tokens.attention_mask
-    model_input    = tokens.input_ids
+    model_input    = self._Tokenizer(model_input, return_tensors = "pt")
+
+    if self.is_gpu_enabled:
+      model_input.to("cuda")
 
     p_parameters["max_length"] += len(model_input[0])
 
-    model_output = self._Model.generate(input_ids       = model_input,
-                                        attention_mask  = attention_mask,
+    model_output = self._Model.generate(**model_input,
                                         **p_parameters)
     generated_text = self._Tokenizer.decode(model_output[0], skip_special_tokens=True)
 
