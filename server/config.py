@@ -21,7 +21,11 @@
 #--     - Set HOST default value to 0.0.0.0
 #--
 #--   25/03/2022 Lyaaaaa
-#--     - Set LOG_FILEMODE default valie to 'a'
+#--     - Set LOG_FILEMODE default value to 'a'
+#--
+#--   21/05/2022 Lyaaaaa
+#--     - Set LOG_FILEMODE default value to 'w'
+#--     - Set LOG_LEVEL default value to DEBUG (Experimental branch only)
 #---------------------------------------------------------------------------
 
 import logging
@@ -32,5 +36,5 @@ PORT = 9999
 
 # Logs
 LOG_FILENAME = "server_logs.text"
-LOG_FILEMODE = "a"
-LOG_LEVEL    = logging.INFO
+LOG_FILEMODE = "w"
+LOG_LEVEL    = logging.DEBUG

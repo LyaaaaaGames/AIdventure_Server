@@ -5,13 +5,17 @@
 #-- Author : Lyaaaaaaaaaaaaaaa
 #--
 #-- Portability Issues (feel free to remove this part if there is none):
-#--  - Cuda might not be available depending of the environment and OS.
+#--  - This class needs Pytorch installed.
 #--
 #-- Implementation Notes:
 #--  - This class will handle all the task related to the AI model.
 #--
 #-- Anticipated changes:
+#--  - Use a specific configuration.json file for each model (each model folder
+#--      already has a config file. It could be more efficient to save each config
+#--      into its own folder.
 #--  - Update generate_text to make it possible to generate multiple answers.
+#--  - Get rid of the configuration as I confused the generation and model config.
 #--
 #-- Changelog:
 #--  - 31/08/2021 Lyaaaaa
@@ -77,20 +81,12 @@
 #--    - Updated generate_text to append the input_ids' size to max_length in
 #--        p_parameters. Also added attention_mask as parameter to generate method.
 #--
-#--  - 11/02/2022 Lyaaaaa
-#--    - Removed _get_gpu_info call from generate_text method.
-#--    - Updated _enable_gpu, _empty_gpu_cache and _get_gpu_info to fix the
-#--        indentation.
-#--    - Updated _enable_gpu to add a try except finally conditions to avoid
-#--        to crash if the GPU runs out of memory.
-#--    - Added a print in __init__ to investigate the ISSUE#2.
-#--    - Replaced the prints by self._logger.info.
-#--
-#--  - 11/02/2022 Lyaaaaa
-#--    - Updated _enable_gpu to call _model.to("cpu") if the the runtime error
-#--        happens with the GPU.
-#--
 #--  - 18/02/2022 Lyaaaaa
+#--    - Extracted generate_text method to generator class.
+#--    - Added the model_type and AutoModelForSeq2SeqLM imports.
+#--    - Updated __init__ to receive the a parameter to specify the model's type.
+#--    - Updated _load and _download methods to use either AutoModelForCausalLM or
+#--        AutoModelForSeq2SeqLM depending of the _model_type attribute's value.
 #--    - Removed _Config and reload_config method (not used method)
 #--    - Updated generate_text to fix the "inputs on different devices" error.
 #--        attention_mark was not converted to cuda while model_input was.
@@ -111,7 +107,8 @@
 #--    - Replaced self._logger by logger.log.
 #------------------------------------------------------------------------------
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
+from model_type   import Model_Type
 import os
 import torch
 
@@ -119,19 +116,24 @@ import torch
 import logger
 
 class Model():
-  _Tokenizer = AutoTokenizer
-  _Model     = AutoModelForCausalLM
 
+  _Tokenizer  : AutoTokenizer
+  _model_type : Model_Type
+  _Model = None
 
 #------------------------------------------------------------------------------
 #-- __init__
 #------------------------------------------------------------------------------
-  def __init__(self, p_model_name = "EleutherAI/gpt-neo-125M", p_use_gpu = True):
+  def __init__(self,
+               p_model_name = "EleutherAI/gpt-neo-125M",
+               p_model_type = Model_Type.GENERATION.value,
+               p_use_gpu    = True,):
     self._tokenizer_path   = "tokenizers/" + p_model_name
     self._model_path       = "models/" + p_model_name
     self._model_name       = p_model_name
     self.is_cuda_available = torch.cuda.is_available()
     self.is_gpu_enabled    = False
+    self._model_type       = p_model_type
 
     if self._load() == False:
       self._download()
@@ -139,52 +141,6 @@ class Model():
       self._enable_gpu()
     else:
       logger.log.info("Model successfully loaded from local file")
-
-
-#------------------------------------------------------------------------------
-#-- generate_text
-#------------------------------------------------------------------------------
-  def generate_text(self,
-                    p_prompt     = None,
-                    p_context    = None,
-                    p_memory     = None,
-                    p_parameters = None):
-
-    model_input  = p_memory + p_context + p_prompt
-
-    model_input    = p_memory + p_context + p_prompt
-    tokens         = self._Tokenizer(model_input, return_tensors = "pt")
-    attention_mask = tokens.attention_mask
-    model_input    = tokens.input_ids
-
-    p_parameters["max_length"] += len(model_input[0])
-    
-    if self.is_gpu_enabled == True:
-      model_input    = model_input.to("cuda")
-      attention_mask = attention_mask.to("cuda")
-      try:
-        model_output = self._Model.generate(input_ids       = model_input,
-                                            attention_mask  = attention_mask,
-                                            **p_parameters)
-      except Exception as error:
-        logger.log.error("Error while generating with the GPU:", error)
-        model_output = None
-        model_input    = model_input.to("cpu")
-        attention_mask = attention_mask.to("cpu")
-        self._disable_gpu()
-
-    if self.is_gpu_enabled == False:
-      model_output = self._Model.generate(input_ids       = model_input,
-                                          attention_mask  = attention_mask,
-                                          **p_parameters)
-
-    generated_text = self._Tokenizer.decode(model_output[0], skip_special_tokens=True)
-
-    if self.is_gpu_enabled == True:
-      self._empty_gpu_cache()
-
-    return generated_text
-
 
 #------------------------------------------------------------------------------
 #-- _load
@@ -198,9 +154,13 @@ class Model():
       return False
 
     try:
-      self._Model = AutoModelForCausalLM.from_pretrained(self._model_path)
+      if self._model_type == Model_Type.GENERATION.value:
+        self._Model = AutoModelForCausalLM.from_pretrained(self._model_path)
+      elif self._model_type == Model_Type.TRANSLATION.value:
+        self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_path)
 
-    except:
+    except error:
+      logger.log.error(error)
       return False
 
     return True
@@ -224,9 +184,14 @@ class Model():
                                                     cache_dir       = "cache",
                                                     resume_download = True)
     logger.log.info("Trying to download the model...")
-    self._Model     = AutoModelForCausalLM.from_pretrained(model_name,
-                                                           cache_dir       = "cache",
-                                                           resume_download = True)
+    if self._model_type == Model_Type.GENERATION.value:
+      self._Model = AutoModelForCausalLM.from_pretrained(model_name,
+                                                         cache_dir       = "cache",
+                                                         resume_download = True)
+    elif self._model_type == Model_Type.TRANSLATION.value:
+      self._Model = AutoModelForSeq2SeqLM.from_pretrained(model_name,
+                                                          cache_dir       = "cache",
+                                                          resume_download = True)
     self._save()
 
 
