@@ -10,6 +10,8 @@
 #--  - The server receives data encoded in utf-8 bytes. But the function
 #--      WebSocketServerProtocol.send just needs a string and encodes by itself.
 #--      See the [doc](https://websockets.readthedocs.io/en/stable/api/server.html#websockets.server.WebSocketServerProtocol.send)
+#--  - The server uses two models for the translation instead of one handling
+#--      multiple languages. It trades performances for a better translation.
 #-- Anticipated changes:
 #--  - Make shutdown_server function cleaner.
 #--  - In handler no longer shutdown the server when an user disconnect (because
@@ -62,37 +64,9 @@
 #--    - Imported download_file function from downloader
 #--    - Updated handle_request to handle Request.DOWNLOAD_MODEL case.
 #--
-#--  - 17/01/2022 Lyaaaaa
-#--    - Updater init_logger to write in a file
-#--    - Updated handle_request to write in logs if CUDA is available.
-#--
-#--  - 18/01/2022 Lyaaaaa
-#--    - Updated init_logger.
-#--    - Remove logger.info from handle_request.
-#--
-#--  - 19/01/2022 Lyaaaaa
-#--    - Updated init_logger to init the global variable logger and set the logging
-#--        level to INFO.
-#--    - Updated handler and handle_request to use logger to log messages.
-#--
-#--  - 20/01/2022 Lyaaaaa
-#--    - Added a logger.info to log if the GPU is enabled for the generation.
-#--
-#--  - 21/01/2022 Lyaaaaa
-#--    - Updated handle_request to get p_data['use_gpu'] value in the LOAD_MODEL
-#--        case.
-#--
-#--  - 25/01/2022 Lyaaaaa
-#--    - Set logging level to info instead of debug.
-#--
-#--  - 21/02/2022 Lyaaaaa
-#--    - Added config import and uses its variables.
-#--    - Updated init_logger to work.
-#--
-#--  - 24/04/2022 Lyaaaaa
-#--    - Extracted init_logger into the new logger.py file.
-#--    - Imported logger and replaced logger variable by logger.log.
-#--    - Updated main to now call logger.init_logger instead of init_logger.
+#--  - 21/05/2022 Lyaaaaa
+#--    - Updated handle_request to add more debug messages and to use the
+#--        use_gpu value for both the generator and translator.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -104,14 +78,26 @@ import logger
 
 from json_utils import Json_Utils
 from request    import Request
-from model      import Model
+from generator  import Generator
+from translator import Translator
+from model_type import Model_Type
 from downloader import download_file
 
 
 HOST = config.HOST
 PORT = config.PORT
 
-model = None
+generator           = None
+from_eng_translator = None
+to_eng_translator   = None
+
+#------------------------------------------------------------------------------
+# init_logger
+#------------------------------------------------------------------------------
+def init_logger():
+  logger = logging.getLogger("websockets.server")
+  logger.setLevel(logging.ERROR)
+  logger.addHandler(logging.StreamHandler())
 
 
 #------------------------------------------------------------------------------
@@ -142,20 +128,24 @@ async def handler(p_websocket, path):
 # handle_request
 #------------------------------------------------------------------------------
 def handle_request(p_websocket, p_data : dict):
-  global model
+  global generator
+  global from_eng_translator
+  global to_eng_translator
 
   request = p_data['request']
 
-  if   request == Request.TEXT_GENERATION.value:
+  if request == Request.TEXT_GENERATION.value:
     prompt     = p_data['prompt']
     context    = p_data['context']
     memory     = p_data['memory']
     parameters = p_data['parameters']
 
-    p_data['generated_text'] = model.generate_text(prompt,
-                                                   context,
-                                                   memory,
-                                                   parameters)
+    generated_text = generator.generate_text(prompt,
+                                             context,
+                                             memory,
+                                             parameters)
+
+    p_data["generated_text"] = generated_text
     p_data = Json_Utils.json_to_string(p_data)
 
     return p_data
@@ -164,15 +154,28 @@ def handle_request(p_websocket, p_data : dict):
     shutdown_server()
 
   elif request == Request.LOAD_MODEL.value:
-    model_name = p_data['model_name']
-    use_gpu    = p_data['use_gpu']
-    model      = Model(model_name, use_gpu)
+    use_gpu = p_data['use_gpu']
+    if p_data["model_type"] == Model_Type.GENERATION.value:
+      logger.log.debug("loading generator")
+      model_name = p_data['model_name']
+
+      generator  = Generator(model_name, Model_Type.GENERATION.value, use_gpu)
+      logger.log.info("Is CUDA available: " + format(generator.is_cuda_available))
+      logger.log.debug("Is GPU enabled for the generator: " + format(generator.is_gpu_enabled))
+
+    elif p_data["model_type"] == Model_Type.TRANSLATION.value:
+      logger.log.debug("loading translator")
+      model_name = p_data["to_eng_model"]
+      to_eng_translator = Translator(model_name, Model_Type.TRANSLATION.value, use_gpu)
+      logger.log.debug("Is GPU enabled for the to_eng translator: " + format(to_eng_translator.is_gpu_enabled))
+
+      model_name = p_data["from_eng_model"]
+      from_eng_translator = Translator(model_name, Model_Type.TRANSLATION.value, use_gpu)
+      logger.log.debug("Is GPU enabled for the from_eng translator: " + format(from_eng_translator.is_gpu_enabled))
 
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)
 
-    logger.log.info("Is CUDA available: " + format(model.is_cuda_available))
-    logger.log.info("Is GPU acceleration enabled: " + format(model.is_gpu_enabled))
     return p_data
 
   elif request == Request.DOWNLOAD_MODEL.value:
@@ -184,14 +187,40 @@ def handle_request(p_websocket, p_data : dict):
     p_data            = Json_Utils.json_to_string(p_data)
 
 
-    return p_data
+  elif request == Request.TEXT_TRANSLATION.value:
+    prompt = p_data["prompt"]
+    to_eng = p_data["to_eng"]
+
+    p_data["translated_text"] = translate_text(prompt, to_eng)
+    p_data = Json_Utils().json_to_string(p_data)
+
+  return p_data
+
+
+#------------------------------------------------------------------------------
+# translate
+#------------------------------------------------------------------------------
+def translate_text(p_prompt : str, p_to_eng : bool = True):
+  global from_eng_translator
+  global to_eng_translator
+
+  translated_text = None
+  if p_prompt == "":
+    translated_text = ""
+  else:
+    if p_to_eng == True:
+      translated_text = to_eng_translator.translate_text(p_prompt)
+    else:
+      translated_text = from_eng_translator.translate_text(p_prompt)
+
+  return translated_text
 
 
 #------------------------------------------------------------------------------
 # shutdown_server
 #------------------------------------------------------------------------------
 def shutdown_server():
-    exit()
+  exit()
 
 
 #------------------------------------------------------------------------------

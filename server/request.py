@@ -27,6 +27,9 @@
 #--
 #--  - 29/12/2021 Lyaaaaa
 #--    - Added DOWNLOAD_MODEL and DOWNLOADED_MODEL requests.
+#--
+#--  - 01/03/2022 Lyaaaaa
+#--    - Added TEXT_TRANSLATION request.
 #------------------------------------------------------------------------------
 
 from enum import Enum
@@ -38,3 +41,4 @@ class Request(Enum):
   LOADED_MODEL     = 4
   DOWNLOAD_MODEL   = 5
   DOWNLOADED_MODEL = 6
+  TEXT_TRANSLATION = 7
