@@ -1,11 +1,13 @@
 name: aidventure
 channels:
   - defaults
+  - conda-forge
+  - pytorch
 dependencies:
   - pip
   - python=3.9.7
-  - pip:
-    - websockets==10.0
-    - torch==1.10.2
-    - transformers==4.16.2
-    - sentencepiece
+  - pytorch=1.12
+  - websockets=10.0
+  - transformers=4.21
+  - sentencepiece
+  - accelerate=0.12.0
