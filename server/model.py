@@ -105,6 +105,18 @@
 #--  - 24/02/2022 Lyaaaaa
 #--    - Replaced the init of logging by the import of the new script logger.
 #--    - Replaced self._logger by logger.log.
+#--
+#--  - 15/08/2022 Lyaaaaa
+#--    - Updated __init__ to receive the p_low_memory_mode parameter.
+#--    - Updated _load to enable low_cpu_mem_usage option while loading the
+#--        generator model.
+#--    - Updated _load to fix the except being wrong.
+#--    - Extracted a log print from _enable_gpu to _disable_gpu
+#--    - Updated _empty_gpu_cache to torch.no_grad() otherwise the memory stays
+#--        in use. Even with this solution a few hundreds of MB stays in use...
+#--
+#--  - 01/04/2023 Lyaaaaa
+#--    - Updated __init__ to declare attribute generation_config.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -125,15 +137,18 @@ class Model():
 #-- __init__
 #------------------------------------------------------------------------------
   def __init__(self,
-               p_model_name = "EleutherAI/gpt-neo-125M",
-               p_model_type = Model_Type.GENERATION.value,
-               p_use_gpu    = True,):
+               p_model_name      = "EleutherAI/gpt-neo-125M",
+               p_model_type      = Model_Type.GENERATION.value,
+               p_use_gpu         = True,
+               p_low_memory_mode = True):
     self._tokenizer_path   = "tokenizers/" + p_model_name
     self._model_path       = "models/" + p_model_name
     self._model_name       = p_model_name
     self.is_cuda_available = torch.cuda.is_available()
     self.is_gpu_enabled    = False
     self._model_type       = p_model_type
+    self._low_memory_mode  = p_low_memory_mode
+    self.generation_config = None
 
     if self._load() == False:
       self._download()
@@ -155,12 +170,15 @@ class Model():
 
     try:
       if self._model_type == Model_Type.GENERATION.value:
-        self._Model = AutoModelForCausalLM.from_pretrained(self._model_path)
+        args        = {"low_cpu_mem_usage": self._low_memory_mode}
+        self._Model = AutoModelForCausalLM.from_pretrained(self._model_path,
+                                                           **args)
+
       elif self._model_type == Model_Type.TRANSLATION.value:
         self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_path)
 
-    except error:
-      logger.log.error(error)
+    except:
+      logger.log.error("An unexpected error happened while loading the model")
       return False
 
     return True
@@ -210,7 +228,6 @@ class Model():
 
     except:
       logger.log.error("An error happened while using the GPU!")
-      logger.log.info("Falling back to CPU.")
       self._disable_gpu()
 
 
@@ -229,8 +246,10 @@ class Model():
 #------------------------------------------------------------------------------
   def _empty_gpu_cache(self):
     logger.log.debug("Clearing GPU cache")
-    torch.cuda.empty_cache()
 
+    with torch.no_grad():
+      torch.cuda.empty_cache()
+    self._get_gpu_info()
 
 #------------------------------------------------------------------------------
 #-- _get_gpu_info
@@ -244,4 +263,5 @@ class Model():
     logger.log.debug(torch.cuda.memory_reserved())
     logger.log.debug("---------------Max memory reserved---------------")
     logger.log.debug(torch.cuda.max_memory_reserved())
+
 
