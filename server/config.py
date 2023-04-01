@@ -40,4 +40,4 @@ PORT = 9999
 # Logs
 LOG_FILENAME = "server_logs.text"
 LOG_FILEMODE = "w"
-LOG_LEVEL    = logging.DEBUG
+LOG_LEVEL    = logging.INFO
