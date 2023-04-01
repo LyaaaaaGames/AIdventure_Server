@@ -1,6 +1,6 @@
 #---------------------------------------------------------------------------
-#-- Copyright (c) 2021-2022 LyaaaaaGames
-#-- Copyright (c) 2022 AIdventure_Server contributors
+#-- Copyright (c) 2021-present LyaaaaaGames
+#-- Copyright (c) 2022-present AIdventure_Server contributors
 #--
 #-- author : Lyaaaaa
 #--
@@ -40,4 +40,4 @@ PORT = 9999
 # Logs
 LOG_FILENAME = "server_logs.text"
 LOG_FILEMODE = "w"
-LOG_LEVEL    = logging.INFO
+LOG_LEVEL    = logging.DEBUG
