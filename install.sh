@@ -1,7 +1,7 @@
 #!/bin/bash
 #---------------------------------------------------------------------------
-#-- Copyright (c) 2021-2022 LyaaaaaGames
-#-- Copyright (c) 2022 AIdventure_Server contributors
+#-- Copyright (c) 2021-present LyaaaaaGames
+#-- Copyright (c) 2022-present AIdventure_Server contributors
 #--
 #-- author : Lyaaaaa
 #--
@@ -23,9 +23,12 @@
 #--
 #--   22/05/2022 Lyaaaaa
 #--     - Uncommented "download_conda" and "install_conda" as it breaks the installer. Oups...
+#--
+#--   01/04/2023 Lyaaaaa
+#--     - Updated the miniconda link to use the newest version : 23.1.0-1.
 #---------------------------------------------------------------------------
 
-mini_conda_link="https://repo.anaconda.com/miniconda/Miniconda3-py39_4.10.3-Linux-x86_64.sh"
+mini_conda_link="https://repo.anaconda.com/miniconda/Miniconda3-py39_23.1.0-1-Linux-x86_64.sh"
 cache_folder="cache"
 environment_prefix="server/miniconda/"
 conda_environment_file="conda_config"
