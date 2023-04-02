@@ -67,6 +67,12 @@
 #--  - 21/05/2022 Lyaaaaa
 #--    - Updated handle_request to add more debug messages and to use the
 #--        use_gpu value for both the generator and translator.
+#--
+#--  - 15/08/2022 Lyaaaaa
+#--    - Updated a final except in handler. On unexpected error, the server will
+#--        exit.
+#--    - Updated handle_request to receive low_memory_mode value from the client.
+#--    - Updated the call of Generator constructor to send it low_memory_mode
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -123,6 +129,10 @@ async def handler(p_websocket, path):
     print("Closing the server")
     shutdown_server()
 
+  except:
+    print("Unexpected error shutting down the server")
+    shutdown_server()
+
 
 #------------------------------------------------------------------------------
 # handle_request
@@ -154,23 +164,32 @@ def handle_request(p_websocket, p_data : dict):
     shutdown_server()
 
   elif request == Request.LOAD_MODEL.value:
-    use_gpu = p_data['use_gpu']
+    use_gpu         = p_data['use_gpu']
+    low_memory_mode = p_data['low_memory_mode']
+
     if p_data["model_type"] == Model_Type.GENERATION.value:
       logger.log.debug("loading generator")
       model_name = p_data['model_name']
 
-      generator  = Generator(model_name, Model_Type.GENERATION.value, use_gpu)
+      generator  = Generator(model_name,
+                             Model_Type.GENERATION.value,
+                             use_gpu,
+                             low_memory_mode)
       logger.log.info("Is CUDA available: " + format(generator.is_cuda_available))
       logger.log.debug("Is GPU enabled for the generator: " + format(generator.is_gpu_enabled))
 
     elif p_data["model_type"] == Model_Type.TRANSLATION.value:
       logger.log.debug("loading translator")
       model_name = p_data["to_eng_model"]
-      to_eng_translator = Translator(model_name, Model_Type.TRANSLATION.value, use_gpu)
+      to_eng_translator = Translator(model_name,
+                                     Model_Type.TRANSLATION.value,
+                                     use_gpu)
       logger.log.debug("Is GPU enabled for the to_eng translator: " + format(to_eng_translator.is_gpu_enabled))
 
       model_name = p_data["from_eng_model"]
-      from_eng_translator = Translator(model_name, Model_Type.TRANSLATION.value, use_gpu)
+      from_eng_translator = Translator(model_name,
+                                       Model_Type.TRANSLATION.value,
+                                       use_gpu)
       logger.log.debug("Is GPU enabled for the from_eng translator: " + format(from_eng_translator.is_gpu_enabled))
 
     p_data['request'] = Request.LOADED_MODEL.value
@@ -238,6 +257,7 @@ try:
 
 except KeyboardInterrupt:
   print("Server stopped.")
+
 
 
 

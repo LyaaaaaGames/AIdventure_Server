@@ -150,6 +150,7 @@ class Model():
     self._low_memory_mode  = p_low_memory_mode
     self.generation_config = None
 
+
     if self._load() == False:
       self._download()
     if p_use_gpu == True and self.is_cuda_available == True:
