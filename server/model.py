@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-#-- Copyright (c) 2021-2022 LyaaaaaGames
-#-- Copyright (c) 2022 AIdventure_Server contributors
+#-- Copyright (c) 2021-present LyaaaaaGames
+#-- Copyright (c) 2022-present AIdventure_Server contributors
 #--
 #-- Author : Lyaaaaaaaaaaaaaaa
 #--
@@ -114,6 +114,9 @@
 #--    - Extracted a log print from _enable_gpu to _disable_gpu
 #--    - Updated _empty_gpu_cache to torch.no_grad() otherwise the memory stays
 #--        in use. Even with this solution a few hundreds of MB stays in use...
+#--
+#--  - 01/04/2023 Lyaaaaa
+#--    - Updated __init__ to declare attribute generation_config.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -145,6 +148,8 @@ class Model():
     self.is_gpu_enabled    = False
     self._model_type       = p_model_type
     self._low_memory_mode  = p_low_memory_mode
+    self.generation_config = None
+
 
     if self._load() == False:
       self._download()

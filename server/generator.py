@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-#-- Copyright (c) 2021-2022 LyaaaaaGames
-#-- Copyright (c) 2022 AIdventure_Server contributors
+#-- Copyright (c) 2021-present LyaaaaaGames
+#-- Copyright (c) 2022-present AIdventure_Server contributors
 #--
 #-- Author : Lyaaaaaaaaaaaaaaa
 #--
@@ -17,9 +17,18 @@
 #--  - 22/05/2022 Lyaaaaa
 #--    - Updated generate_text to support the gpu once again. Simplified the
 #--        script by merging all the models input into a single dict "model_input".
+#--
+#--  - 01/03/2022 Lyaaaaa
+#--    - Added GenerationConfig import from transformers.
+#--    - Because max_length has been replaced by max_new_tokens, it is no more
+#--        needed to have max_length = max_length + model_input's length.
+#--    - p_parameters aren't sent into generate() anymore. They are now given
+#--        to a GenerationConfig object which is an attribute (generation_config)
+#--        of the Model. generate() automatically uses these config.
 #------------------------------------------------------------------------------
 
 from model import Model
+from transformers import GenerationConfig
 
 class Generator(Model):
 
@@ -38,10 +47,9 @@ class Generator(Model):
     if self.is_gpu_enabled:
       model_input.to("cuda")
 
-    p_parameters["max_length"] += len(model_input[0])
+    self._Model.generation_config = GenerationConfig(**p_parameters)
 
-    model_output = self._Model.generate(**model_input,
-                                        **p_parameters)
+    model_output = self._Model.generate(**model_input)
     generated_text = self._Tokenizer.decode(model_output[0], skip_special_tokens=True)
 
     return generated_text

@@ -1,6 +1,6 @@
 #---------------------------------------------------------------------------
-#-- Copyright (c) 2021-2022 LyaaaaaGames
-#-- Copyright (c) 2022 AIdventure_Server contributors
+#-- Copyright (c) 2021-present LyaaaaaGames
+#-- Copyright (c) 2022-present AIdventure_Server contributors
 #--
 #-- author : Lyaaaaa
 #--
@@ -26,6 +26,9 @@
 #--   21/05/2022 Lyaaaaa
 #--     - Set LOG_FILEMODE default value to 'w'
 #--     - Set LOG_LEVEL default value to DEBUG (Experimental branch only)
+#--
+#--   09/11/2022 Lyaaaaa
+#--     - Set LOG_LEVEL default value back to INFO
 #---------------------------------------------------------------------------
 
 import logging
@@ -37,4 +40,4 @@ PORT = 9999
 # Logs
 LOG_FILENAME = "server_logs.text"
 LOG_FILEMODE = "w"
-LOG_LEVEL    = logging.DEBUG
+LOG_LEVEL    = logging.INFO
