@@ -10,3 +10,6 @@ dependencies:
   - transformers=4.27
   - sentencepiece
   - accelerate
+  - torchvision
+  - torchaudio
+  - cpuonly
