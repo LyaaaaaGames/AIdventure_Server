@@ -117,15 +117,37 @@
 #--
 #--  - 01/04/2023 Lyaaaaa
 #--    - Updated __init__ to declare attribute generation_config.
+#--
+#--  - 04/05/2023 Lyaaaaa
+#--    - Added imports. Accelerator and tempfile.
+#--    - _tokenizer_path becomes _tokenizers_path.
+#--    - Added create_offload_folder method. It creates a temp folder.
+#--    - Added _set_model_parameters method.
+#--    - Updated _empty_gpu_cache to call accelerator.free_memory()
+#--    - Deleted _disable/enable_gpu methods as they aren't used anymore.
+#--    - Added many attributes related to the config.
+#--    - Extracted _tokenizers_path and _model_path initialization in the config.
+#--    - Updated __init__
+#--        Now receives the many new parameters in a list.
+#--        Deleted is_gpu_enabled.
+#--        Call _empty_gpu_cache before loading the model.
+#--        Call _set_model_parameters before loading the model.
+#--    - Added a few log message (info + debug) in __init__ and _load.
+#--    - Updated _load to use the new attributes:
+#          device_map, torch_dtype, max_memory and offload_folder.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 from model_type   import Model_Type
+from accelerate   import Accelerator
+
+import tempfile
 import os
 import torch
 
-# Custom imports
 import logger
+import config
+
 
 class Model():
 
@@ -133,30 +155,73 @@ class Model():
   _model_type : Model_Type
   _Model = None
 
+  _tokenizers_path = config.TOKENIZERS_PATH
+  _model_path      = config.MODELS_PATH
+  _allow_offload   = config.ALLOW_OFFLOAD
+  _limit_memory    = config.LIMIT_MEMORY
+  _max_memory      = config.MAX_MEMORY
+  _allow_download  = config.ALLOW_DOWNLOAD
+  _device_map      = config.DEVICE_MAP
+  _torch_dtype     = config.TORCH_DTYPE
+  _low_memory_mode = config.LOW_CPU_MEM_USAGE
+  _offload_folder  = None
+
 #------------------------------------------------------------------------------
 #-- __init__
 #------------------------------------------------------------------------------
   def __init__(self,
-               p_model_name      = "EleutherAI/gpt-neo-125M",
-               p_model_type      = Model_Type.GENERATION.value,
-               p_use_gpu         = True,
-               p_low_memory_mode = True):
-    self._tokenizer_path   = "tokenizers/" + p_model_name
-    self._model_path       = "models/" + p_model_name
+               p_model_name = config.DEFAULT_MODEL,
+               p_model_type = Model_Type.GENERATION.value,
+               p_parameters = {}):
+
+    self._tokenizers_path  += p_model_name
+    self._model_path       += p_model_name
     self._model_name       = p_model_name
     self.is_cuda_available = torch.cuda.is_available()
-    self.is_gpu_enabled    = False
     self._model_type       = p_model_type
-    self._low_memory_mode  = p_low_memory_mode
-    self.generation_config = None
 
+    self._set_model_parameters(p_parameters)
 
+    self._empty_gpu_cache()
     if self._load() == False:
-      self._download()
-    if p_use_gpu == True and self.is_cuda_available == True:
-      self._enable_gpu()
+      if self._allow_download == True:
+        self._download()
+      else:
+        logger.log.info("Couldn't load the model files.")
+        logger.log.info("Downloading the model with the server is disabled.")
     else:
       logger.log.info("Model successfully loaded from local file")
+
+
+#------------------------------------------------------------------------------
+#-- _set_model_parameters
+#------------------------------------------------------------------------------
+  def _set_model_parameters(self, p_parameters : dict):
+    logger.log.info("Setting up the model.")
+    logger.log.debug(p_parameters)
+
+    if self._low_memory_mode == None:
+      self._low_memory_mode  = p_parameters["low_memory_mode"]
+
+    if self._limit_memory == False:
+      self._max_memory = None
+    elif self._limit_memory == None:
+      self._max_memory = p_parameters["max_memory"]
+
+    if self._allow_offload == True:
+      create_offload_folder()
+    elif self._allow_offload == None and p_parameters["allow_offload"] == True:
+      create_offload_folder()
+
+
+    if self._allow_download == None:
+      self._allow_download = p_parameters["allow_download"]
+
+    if self._device_map == None:
+      self._device_map = p_parameters["device_map"]
+
+    if self._torch_dtype == None:
+      self._torch_dtype = p_parameters["torch_dtype"]
 
 #------------------------------------------------------------------------------
 #-- _load
@@ -164,22 +229,31 @@ class Model():
   def _load(self):
 
     try:
-      self._Tokenizer = AutoTokenizer.from_pretrained(self._tokenizer_path)
-    except:
-      logger.log.info("Token file in '" + self._tokenizer_path + "' not found.")
+      self._Tokenizer = AutoTokenizer.from_pretrained(self._tokenizers_path)
+    except Exception as e:
+      logger.log.info("Token file in '" + self._tokenizers_path + "' not found.")
+      logger.log
       return False
 
     try:
       if self._model_type == Model_Type.GENERATION.value:
-        args        = {"low_cpu_mem_usage": self._low_memory_mode}
+        args = {"low_cpu_mem_usage": self._low_memory_mode,
+                "device_map"       : self._device_map,
+                "torch_dtype"      : self._torch_dtype,
+                "max_memory"       : self._max_memory,
+                "offload_folder"   : self._offload_folder}
+
+        logger.log.debug("Model settings:")
+        logger.log.debug(args)
         self._Model = AutoModelForCausalLM.from_pretrained(self._model_path,
                                                            **args)
 
       elif self._model_type == Model_Type.TRANSLATION.value:
         self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_path)
 
-    except:
-      logger.log.error("An unexpected error happened while loading the model")
+    except Exception as e:
+      logger.log.error("An unexpected error happened while loading the model: ")
+      logger.log.error(e)
       return False
 
     return True
@@ -189,7 +263,7 @@ class Model():
 #-- _save
 #------------------------------------------------------------------------------
   def _save(self):
-    self._Tokenizer.save_pretrained(self._tokenizer_path)
+    self._Tokenizer.save_pretrained(self._tokenizers_path)
     self._Model.save_pretrained(self._model_path)
 
 
@@ -213,40 +287,13 @@ class Model():
                                                           resume_download = True)
     self._save()
 
-
-#------------------------------------------------------------------------------
-#-- _enable_gpu
-#------------------------------------------------------------------------------
-  def _enable_gpu(self):
-    logger.log.info("Enabling gpu")
-    self._empty_gpu_cache()
-    self._get_gpu_info()
-
-    try:
-      self._Model.to("cuda")
-      self.is_gpu_enabled = True
-      self._get_gpu_info()
-
-    except:
-      logger.log.error("An error happened while using the GPU!")
-      self._disable_gpu()
-
-
-#------------------------------------------------------------------------------
-#-- _disable_gpu
-#------------------------------------------------------------------------------
-  def _disable_gpu(self):
-    logger.log.info("Falling back to CPU.")
-    self._Model.to("cpu")
-    self._empty_gpu_cache()
-    self.is_gpu_enabled = False
-
-
 #------------------------------------------------------------------------------
 #-- _empty_gpu_cache
 #------------------------------------------------------------------------------
   def _empty_gpu_cache(self):
     logger.log.debug("Clearing GPU cache")
+    accelerator = Accelerator()
+    accelerator.free_memory()
 
     with torch.no_grad():
       torch.cuda.empty_cache()
@@ -265,4 +312,12 @@ class Model():
     logger.log.debug("---------------Max memory reserved---------------")
     logger.log.debug(torch.cuda.max_memory_reserved())
 
-
+  #------------------------------------------------------------------------------
+  # create_offload_folder
+  #------------------------------------------------------------------------------
+  def create_offload_folder():
+      cwd = os.getcwd()
+      folder = tempfile.TemporaryDirectory(prefix = config.OFFLOAD_FOLDER,
+                                           dir    = cwd)
+      config.OFFLOAD_FOLDER = folder
+      self._offload_folder  = config.OFFLOAD_FOLDER.name

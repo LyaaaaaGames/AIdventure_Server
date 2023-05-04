@@ -73,6 +73,10 @@
 #--        exit.
 #--    - Updated handle_request to receive low_memory_mode value from the client.
 #--    - Updated the call of Generator constructor to send it low_memory_mode
+#--
+#--  - 04/05/2022 Lyaaaaa
+#--    - Updated handle_request to receive the new parameters and send them inside
+#--        a list to the Generator class. Removed use_gpu var.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -164,19 +168,23 @@ def handle_request(p_websocket, p_data : dict):
     shutdown_server()
 
   elif request == Request.LOAD_MODEL.value:
-    use_gpu         = p_data['use_gpu']
-    low_memory_mode = p_data['low_memory_mode']
+    del generator
+
+    parameters = {"low_memory_mode" : p_data['low_memory_mode'],
+                  "allow_offload"   : p_data['allow_offload'],
+                  "max_memory"      : p_data['max_memory'],
+                  "allow_download"  : p_data['allow_download'],
+                  "device_map"      : p_data['device_map'],
+                  "torch_dtype"     : p_data['torch_dtype'],}
 
     if p_data["model_type"] == Model_Type.GENERATION.value:
       logger.log.debug("loading generator")
       model_name = p_data['model_name']
 
-      generator  = Generator(model_name,
+      generator = Generator(model_name,
                              Model_Type.GENERATION.value,
-                             use_gpu,
-                             low_memory_mode)
+                             parameters)
       logger.log.info("Is CUDA available: " + format(generator.is_cuda_available))
-      logger.log.debug("Is GPU enabled for the generator: " + format(generator.is_gpu_enabled))
 
     elif p_data["model_type"] == Model_Type.TRANSLATION.value:
       logger.log.debug("loading translator")
