@@ -35,9 +35,15 @@
 #--   04/05/2022 Lyaaaaa
 #--     - Added a new section "Models". This section contains settings for the
 #--         Model class.
+#--
+#--   05/05/2022 Lyaaaaa
+#--     - Import torch_dtype to support the usage of an enum for the dtypes.
+#--     - Added OFFLOAD_DICT to the settings. When True, it avoids RAM peak when
+#--         loading a model.
 #---------------------------------------------------------------------------
 
 import logging
+from torch_dtype import Torch_Dtypes
 
 # Network
 HOST = "0.0.0.0"
@@ -51,18 +57,19 @@ LOG_LEVEL    = logging.INFO
 # Models.
 #See possible values here: https://huggingface.co/docs/transformers/main_classes/model#transformers.PreTrainedModel.from_pretrained
 
-TOKENIZERS_PATH   = "models/"
-MODELS_PATH       = "models/"
-DEFAULT_MODEL     = "EleutherAI/gpt-neo-125M"
-ALLOW_DOWNLOAD    = None # True/False/None. If True, the server will download AI's files.
-ALLOW_OFFLOAD     = None # True/False/None
-OFFLOAD_FOLDER    = "offload-" # Prefix to the temp folder.
-LOW_CPU_MEM_USAGE = None # True/False/None
-LIMIT_MEMORY      = None # True/False/None
+TOKENIZERS_PATH    = "models/"
+MODELS_PATH        = "models/"
+DEFAULT_MODEL      = "EleutherAI/gpt-neo-125M"
+ALLOW_DOWNLOAD     = None # True/False/None. If True, the server will download AI's files.
+ALLOW_OFFLOAD      = None # True/False/None
+OFFLOAD_FOLDER     = "offload-" # Prefix to the temp folder.
+LOW_CPU_MEM_USAGE  = None # True/False/None
+LIMIT_MEMORY       = None # True/False/None
+OFFLOAD_DICT       = None # True/False/None
 
 # https://huggingface.co/docs/accelerate/main/en/usage_guides/big_modeling#designing-a-device-map
 # MAX_MEMORY must be a dict. E.G {0: "30GB", 1: "46GB", [x: "yMB/yGB"], "cpu": "20000MB"}. x is a gpu.
-MAX_MEMORY        = None # None/dict see documentation
+MAX_MEMORY        = None # None/dict/See documentation
 DEVICE_MAP        = None # None/see documentation
-TORCH_DTYPE       = None # None/see documentation
+TORCH_DTYPE       = None # "Auto"/None/torch.dtype/See torch_dtype.py for more info.
 
