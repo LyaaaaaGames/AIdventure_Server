@@ -134,7 +134,12 @@
 #--        Call _set_model_parameters before loading the model.
 #--    - Added a few log message (info + debug) in __init__ and _load.
 #--    - Updated _load to use the new attributes:
-#          device_map, torch_dtype, max_memory and offload_folder.
+#--        device_map, torch_dtype, max_memory and offload_folder.
+#--
+#--  - 05/05/2023 Lyaaaaa
+#--    - Added import of human_readable.
+#--    - Updated _get_gpu_info to use the human_readable.
+#--    - Updated __init__ to call _get_gpu_info after loading the model.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -147,6 +152,7 @@ import torch
 
 import logger
 import config
+from utils import human_readable
 
 
 class Model():
@@ -191,6 +197,7 @@ class Model():
         logger.log.info("Downloading the model with the server is disabled.")
     else:
       logger.log.info("Model successfully loaded from local file")
+      self._get_gpu_info()
 
 
 #------------------------------------------------------------------------------
@@ -304,13 +311,13 @@ class Model():
 #------------------------------------------------------------------------------
   def _get_gpu_info(self):
     logger.log.debug("---------------Memory allocated---------------")
-    logger.log.debug(torch.cuda.memory_allocated())
+    logger.log.debug(human_readable(torch.cuda.memory_allocated()))
     logger.log.debug("---------------Max memory allocated---------------")
-    logger.log.debug(torch.cuda.max_memory_allocated())
+    logger.log.debug(human_readable(torch.cuda.max_memory_allocated()))
     logger.log.debug("---------------Memory reserved---------------")
-    logger.log.debug(torch.cuda.memory_reserved())
+    logger.log.debug(human_readable(torch.cuda.memory_reserved()))
     logger.log.debug("---------------Max memory reserved---------------")
-    logger.log.debug(torch.cuda.max_memory_reserved())
+    logger.log.debug(human_readable(torch.cuda.max_memory_reserved()))
 
   #------------------------------------------------------------------------------
   # create_offload_folder
