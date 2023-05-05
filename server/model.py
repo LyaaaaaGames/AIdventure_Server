@@ -140,10 +140,18 @@
 #--    - Added import of human_readable.
 #--    - Updated _get_gpu_info to use the human_readable.
 #--    - Updated __init__ to call _get_gpu_info after loading the model.
+#--    - Added Torch_Dtypes import to allow the client to choose the dtype.
+#--    - Added _offload_dict attribute and updated _set_model_parameters to set it up.
+#--    - _offload_folder is now set to config.OFFLOAD_FOLDER instead of None.
+#--    - Fixed the missing self. before create_offload_folder in _set_model_parameters
+#--    - Updated load to add offload_state_dict parameter in the arguments.
+#--    - Updated create_offload_folder to not create a new folder if it already exists.
+#--    - Added a debug log with the value of the model's config.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 from model_type   import Model_Type
+from torch_dtype  import Torch_Dtypes
 from accelerate   import Accelerator
 
 import tempfile
@@ -170,7 +178,8 @@ class Model():
   _device_map      = config.DEVICE_MAP
   _torch_dtype     = config.TORCH_DTYPE
   _low_memory_mode = config.LOW_CPU_MEM_USAGE
-  _offload_folder  = None
+  _offload_folder  = config.OFFLOAD_FOLDER
+  _offload_dict    = config.OFFLOAD_DICT
 
 #------------------------------------------------------------------------------
 #-- __init__
@@ -197,6 +206,7 @@ class Model():
         logger.log.info("Downloading the model with the server is disabled.")
     else:
       logger.log.info("Model successfully loaded from local file")
+      logger.log.debug(self._Model.config)
       self._get_gpu_info()
 
 
@@ -216,9 +226,9 @@ class Model():
       self._max_memory = p_parameters["max_memory"]
 
     if self._allow_offload == True:
-      create_offload_folder()
+      self.create_offload_folder()
     elif self._allow_offload == None and p_parameters["allow_offload"] == True:
-      create_offload_folder()
+      self.create_offload_folder()
 
 
     if self._allow_download == None:
@@ -228,7 +238,10 @@ class Model():
       self._device_map = p_parameters["device_map"]
 
     if self._torch_dtype == None:
-      self._torch_dtype = p_parameters["torch_dtype"]
+      self._torch_dtype = Torch_Dtypes.dtypes.value[p_parameters["torch_dtype"]]
+
+    if self._offload_dict == None:
+      self._offload_dict = p_parameters["_offload_dict"]
 
 #------------------------------------------------------------------------------
 #-- _load
@@ -244,14 +257,16 @@ class Model():
 
     try:
       if self._model_type == Model_Type.GENERATION.value:
-        args = {"low_cpu_mem_usage": self._low_memory_mode,
-                "device_map"       : self._device_map,
-                "torch_dtype"      : self._torch_dtype,
-                "max_memory"       : self._max_memory,
-                "offload_folder"   : self._offload_folder}
+        args = {"low_cpu_mem_usage"  : self._low_memory_mode,
+                "device_map"         : self._device_map,
+                "torch_dtype"        : self._torch_dtype,
+                "max_memory"         : self._max_memory,
+                "offload_folder"     : self._offload_folder,
+                "offload_state_dict" : self._offload_dict}
 
         logger.log.debug("Model settings:")
         logger.log.debug(args)
+
         self._Model = AutoModelForCausalLM.from_pretrained(self._model_path,
                                                            **args)
 
@@ -322,7 +337,9 @@ class Model():
   #------------------------------------------------------------------------------
   # create_offload_folder
   #------------------------------------------------------------------------------
-  def create_offload_folder():
+  def create_offload_folder(self):
+    if self._offload_folder == None:
+      logger.log.debug("Creating temporary folder for offloading.")
       cwd = os.getcwd()
       folder = tempfile.TemporaryDirectory(prefix = config.OFFLOAD_FOLDER,
                                            dir    = cwd)

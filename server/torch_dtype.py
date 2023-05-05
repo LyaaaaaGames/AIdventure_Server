@@ -4,8 +4,13 @@
 #--
 #-- Author : Lyaaaaaaaaaaaaaaa
 #--
+#-- Portability Issues (Leave empty if nothing to say):
+#--  - Changing the enum or dtypes might have a **BAD** result with the communication
+#--      with the client!
+#--
 #-- Implementation Notes:
 #--  - An enumeration of https://pytorch.org/docs/stable/tensor_attributes.html
+#--
 #-- Anticipated changes:
 #--  -
 #-- Changelog:

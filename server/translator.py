@@ -25,6 +25,11 @@
 #--  - 22/05/2022 Lyaaaaa
 #--    - Updated translate_text to support cuda if it is enabled.
 #--    - Set use_cache to true.
+#--
+#--  - 05/05/2023 Lyaaaaa
+#--    - Removed inputs.to("cuda"). The translators won't use the gpu anymore (for now).
+#--        The new system isn't supported by the MarianMT models and the generator
+#--        is more in need of the GPU.
 #------------------------------------------------------------------------------
 
 from model import Model
@@ -37,8 +42,6 @@ class Translator(Model):
   def translate_text(self, p_input : str, p_parameters = {}):
     inputs  = self._Tokenizer([p_input], return_tensors = "pt")
 
-    if self.is_gpu_enabled:
-      inputs.to("cuda")
 
     outputs = self._Model.generate(**inputs, **p_parameters)
 

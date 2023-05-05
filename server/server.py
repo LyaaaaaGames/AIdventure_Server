@@ -77,6 +77,12 @@
 #--  - 04/05/2022 Lyaaaaa
 #--    - Updated handle_request to receive the new parameters and send them inside
 #--        a list to the Generator class. Removed use_gpu var.
+#--
+#--  - 05/05/2022 Lyaaaaa
+#--    - del generator now happens only when loading a new generator.
+#--    - Added offload_dict to the parameters list.
+#--    - Removed use_gpu from the parameters passed to the translators init.
+#--    - Removed the log about the translator using the gpu.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -168,16 +174,16 @@ def handle_request(p_websocket, p_data : dict):
     shutdown_server()
 
   elif request == Request.LOAD_MODEL.value:
-    del generator
-
     parameters = {"low_memory_mode" : p_data['low_memory_mode'],
                   "allow_offload"   : p_data['allow_offload'],
                   "max_memory"      : p_data['max_memory'],
                   "allow_download"  : p_data['allow_download'],
                   "device_map"      : p_data['device_map'],
-                  "torch_dtype"     : p_data['torch_dtype'],}
+                  "torch_dtype"     : p_data['torch_dtype'],
+                  "offload_dict"    : p_data['offload_dict'],}
 
     if p_data["model_type"] == Model_Type.GENERATION.value:
+      del generator
       logger.log.debug("loading generator")
       model_name = p_data['model_name']
 
@@ -191,14 +197,12 @@ def handle_request(p_websocket, p_data : dict):
       model_name = p_data["to_eng_model"]
       to_eng_translator = Translator(model_name,
                                      Model_Type.TRANSLATION.value,
-                                     use_gpu)
-      logger.log.debug("Is GPU enabled for the to_eng translator: " + format(to_eng_translator.is_gpu_enabled))
+                                     parameters)
 
       model_name = p_data["from_eng_model"]
       from_eng_translator = Translator(model_name,
                                        Model_Type.TRANSLATION.value,
-                                       use_gpu)
-      logger.log.debug("Is GPU enabled for the from_eng translator: " + format(from_eng_translator.is_gpu_enabled))
+                                       parameters)
 
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)

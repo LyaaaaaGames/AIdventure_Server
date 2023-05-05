@@ -25,10 +25,17 @@
 #--    - p_parameters aren't sent into generate() anymore. They are now given
 #--        to a GenerationConfig object which is an attribute (generation_config)
 #--        of the Model. generate() automatically uses these config.
+#--
+#--  - 05/05/2023 Lyaaaaa
+#--    - The condition for moving the inputs to the gpu is now "is_cuda_available"
+#--        and not checking the is_gpu_enabled attribute anymore.
+#--    - Import logger to display a log when loading the inputs in the gpu.
+#--    - Called _empty_gpu_cache after the generation. This releases some memory.
 #------------------------------------------------------------------------------
 
 from model import Model
 from transformers import GenerationConfig
+import logger
 
 class Generator(Model):
 
@@ -44,7 +51,8 @@ class Generator(Model):
     model_input    = p_memory + p_context + p_prompt
     model_input    = self._Tokenizer(model_input, return_tensors = "pt")
 
-    if self.is_gpu_enabled:
+    if self.is_cuda_available:
+      logger.log.info("Loading inputs to GPU")
       model_input.to("cuda")
 
     self._Model.generation_config = GenerationConfig(**p_parameters)
@@ -52,4 +60,5 @@ class Generator(Model):
     model_output = self._Model.generate(**model_input)
     generated_text = self._Tokenizer.decode(model_output[0], skip_special_tokens=True)
 
+    self._empty_gpu_cache()
     return generated_text
