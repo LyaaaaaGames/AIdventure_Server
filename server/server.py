@@ -83,6 +83,9 @@
 #--    - Added offload_dict to the parameters list.
 #--    - Removed use_gpu from the parameters passed to the translators init.
 #--    - Removed the log about the translator using the gpu.
+#--
+#--  - 07/05/2022 Lyaaaaa
+#--    - Removed the import of the downloader and its use inside this script.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -97,7 +100,6 @@ from request    import Request
 from generator  import Generator
 from translator import Translator
 from model_type import Model_Type
-from downloader import download_file
 
 
 HOST = config.HOST
@@ -208,14 +210,6 @@ def handle_request(p_websocket, p_data : dict):
     p_data            = Json_Utils.json_to_string(p_data)
 
     return p_data
-
-  elif request == Request.DOWNLOAD_MODEL.value:
-    url        = p_data["url"]
-    save_path  = p_data["save_path"]
-    download_file(url, save_path)
-
-    p_data['request'] = Request.DOWNLOADED_MODEL.value
-    p_data            = Json_Utils.json_to_string(p_data)
 
 
   elif request == Request.TEXT_TRANSLATION.value:
