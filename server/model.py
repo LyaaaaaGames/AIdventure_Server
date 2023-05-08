@@ -147,6 +147,14 @@
 #--    - Updated load to add offload_state_dict parameter in the arguments.
 #--    - Updated create_offload_folder to not create a new folder if it already exists.
 #--    - Added a debug log with the value of the model's config.
+#--
+#--  - 08/05/2023 Lyaaaaa
+#--    - Updated _set_model_parameters to format the max_memory list from the
+#--        data received from the client.
+#--    - Fixed a type in p_parameters["_offload_dict"] (the '_' was the typo)
+#--    - Updated create_offload_folder to remove the unefficient check by another.
+#--        Now the temp folder is only created if the model is a generator and
+#--        not a translator.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -222,8 +230,9 @@ class Model():
 
     if self._limit_memory == False:
       self._max_memory = None
-    elif self._limit_memory == None:
-      self._max_memory = p_parameters["max_memory"]
+    elif self._limit_memory == None and p_parameters["limit_memory"] == True:
+      self._max_memory = {0     : p_parameters["max_memory"]["0"],
+                          "cpu" : p_parameters["max_memory"]["cpu"]}
 
     if self._allow_offload == True:
       self.create_offload_folder()
@@ -241,7 +250,7 @@ class Model():
       self._torch_dtype = Torch_Dtypes.dtypes.value[p_parameters["torch_dtype"]]
 
     if self._offload_dict == None:
-      self._offload_dict = p_parameters["_offload_dict"]
+      self._offload_dict = p_parameters["offload_dict"]
 
 #------------------------------------------------------------------------------
 #-- _load
@@ -338,7 +347,7 @@ class Model():
   # create_offload_folder
   #------------------------------------------------------------------------------
   def create_offload_folder(self):
-    if self._offload_folder == None:
+    if self._model_type == Model_Type.GENERATION.value:
       logger.log.debug("Creating temporary folder for offloading.")
       cwd = os.getcwd()
       folder = tempfile.TemporaryDirectory(prefix = config.OFFLOAD_FOLDER,

@@ -86,6 +86,10 @@
 #--
 #--  - 07/05/2022 Lyaaaaa
 #--    - Removed the import of the downloader and its use inside this script.
+#--
+#--  - 08/05/2022 Lyaaaaa
+#--    - Updated handle_request to receive the limit_memory parameter from the
+#--        client.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -178,6 +182,7 @@ def handle_request(p_websocket, p_data : dict):
   elif request == Request.LOAD_MODEL.value:
     parameters = {"low_memory_mode" : p_data['low_memory_mode'],
                   "allow_offload"   : p_data['allow_offload'],
+                  "limit_memory"    : p_data['limit_memory'],
                   "max_memory"      : p_data['max_memory'],
                   "allow_download"  : p_data['allow_download'],
                   "device_map"      : p_data['device_map'],
