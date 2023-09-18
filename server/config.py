@@ -40,6 +40,10 @@
 #--     - Import torch_dtype to support the usage of an enum for the dtypes.
 #--     - Added OFFLOAD_DICT to the settings. When True, it avoids RAM peak when
 #--         loading a model.
+#--
+#--   18/09/2023 Lyaaaaa
+#--     - LOG_FILEMODE default value is now "a" again. The log file is now
+#--         manually deleted to avoid losing logs.
 #---------------------------------------------------------------------------
 
 import logging
@@ -51,7 +55,7 @@ PORT = 9999
 
 # Logs
 LOG_FILENAME = "server_logs.text"
-LOG_FILEMODE = "w"
+LOG_FILEMODE = "a"
 LOG_LEVEL    = logging.INFO
 
 # Models.
