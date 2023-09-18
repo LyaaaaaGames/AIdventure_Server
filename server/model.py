@@ -161,6 +161,10 @@
 #--        happens when loading the tokens.
 #--    - Updated __init__ to log as error "Couldn't load the model files." instead
 #--        of info.
+#--    - Splitted load into three methods. load_tokens, load_model and load_translator.
+#--    - Extracted from init to load the code related to the loading of files.
+#--    - Splitted download into download_model and download_tokens.
+#--    - Splitted save into save_model and save_tokens.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -195,8 +199,9 @@ class Model():
   _offload_folder  = config.OFFLOAD_FOLDER
   _offload_dict    = config.OFFLOAD_DICT
 
+
 #------------------------------------------------------------------------------
-#-- __init__
+#--
 #------------------------------------------------------------------------------
   def __init__(self,
                p_model_name = config.DEFAULT_MODEL,
@@ -212,20 +217,11 @@ class Model():
     self._set_model_parameters(p_parameters)
 
     self._empty_gpu_cache()
-    if self._load() == False:
-      if self._allow_download == True:
-        self._download()
-      else:
-        logger.log.error("Couldn't load the model files.")
-        logger.log.info("Downloading the model with the server is disabled.")
-    else:
-      logger.log.info("Model successfully loaded from local file")
-      logger.log.debug(self._Model.config)
-      self._get_gpu_info()
+    self._load()
 
 
 #------------------------------------------------------------------------------
-#-- _set_model_parameters
+#--
 #------------------------------------------------------------------------------
   def _set_model_parameters(self, p_parameters : dict):
     logger.log.info("Setting up the model.")
@@ -259,10 +255,43 @@ class Model():
       self._offload_dict = p_parameters["offload_dict"]
 
 #------------------------------------------------------------------------------
-#-- _load
+#--
 #------------------------------------------------------------------------------
   def _load(self):
+    model_loaded : bool
 
+    if self._load_tokens() == False:
+      if self._allow_download == True:
+        self._download_tokens()
+      else:
+        logger.log.error("Couldn't load the tokens files.")
+        logger.log.info("Downloading with the server is disabled")
+    else:
+      logger.log.info("Tokens successfully loaded from local files")
+
+
+    if self._model_type == Model_Type.GENERATION.value:
+      model_loaded = self._load_model()
+    elif self._model_type == Model_Type.TRANSLATION.value:
+      model_loaded = self._load_translator()
+
+
+    if model_loaded == False:
+      if self._allow_download == True:
+        self._download_model()
+      else:
+        logger.log.error("Couldn't load the model " + self._model_name)
+        logger.log.info("Downloading with the server is disabled.")
+    else:
+      logger.log.info("Model successfully loaded from local files")
+      logger.log.debug(self._Model.config)
+      self._get_gpu_info()
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def _load_tokens(self):
     try:
       self._Tokenizer = AutoTokenizer.from_pretrained(self._tokenizers_path)
     except Exception as e:
@@ -270,26 +299,28 @@ class Model():
       logger.log.error(e)
       return False
 
+    return True
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def _load_model(self):
     try:
-      if self._model_type == Model_Type.GENERATION.value:
-        args = {"low_cpu_mem_usage"  : self._low_memory_mode,
-                "device_map"         : self._device_map,
-                "torch_dtype"        : self._torch_dtype,
-                "max_memory"         : self._max_memory,
-                "offload_folder"     : self._offload_folder,
-                "offload_state_dict" : self._offload_dict}
+      args = {"low_cpu_mem_usage"  : self._low_memory_mode,
+              "device_map"         : self._device_map,
+              "torch_dtype"        : self._torch_dtype,
+              "max_memory"         : self._max_memory,
+              "offload_folder"     : self._offload_folder,
+              "offload_state_dict" : self._offload_dict}
 
-        logger.log.debug("Model settings:")
-        logger.log.debug(args)
+      logger.log.debug("Model settings:")
+      logger.log.debug(args)
 
-        self._Model = AutoModelForCausalLM.from_pretrained(self._model_path,
-                                                           **args)
-
-      elif self._model_type == Model_Type.TRANSLATION.value:
-        self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_path)
-
+      self._Model = AutoModelForCausalLM.from_pretrained(self._model_path,
+                                                         **args)
     except Exception as e:
-      logger.log.error("An unexpected error happened while loading the model: ")
+      logger.log.error("An unexpected error happened while loading the model")
       logger.log.error(e)
       return False
 
@@ -297,22 +328,50 @@ class Model():
 
 
 #------------------------------------------------------------------------------
-#-- _save
+#--
 #------------------------------------------------------------------------------
-  def _save(self):
+  def _load_translator(self):
+    try:
+      self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_path)
+
+    except Exception as e:
+      logger.log.error("An unexpected error happened while loading the translator")
+      logger.log.error(e)
+      return False
+
+    return True
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def _save_tokens(self):
     self._Tokenizer.save_pretrained(self._tokenizers_path)
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def _save_model(self):
     self._Model.save_pretrained(self._model_path)
 
 
 #------------------------------------------------------------------------------
-#-- _download
+#--
 #------------------------------------------------------------------------------
-  def _download(self):
+  def _download_tokens(self):
     model_name = self._model_name
     logger.log.info("Trying to download the tokenizer...")
     self._Tokenizer = AutoTokenizer.from_pretrained(model_name,
                                                     cache_dir       = "cache",
                                                     resume_download = True)
+    self._save_tokens()
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def _download_model(self):
     logger.log.info("Trying to download the model...")
     if self._model_type == Model_Type.GENERATION.value:
       self._Model = AutoModelForCausalLM.from_pretrained(model_name,
@@ -322,10 +381,11 @@ class Model():
       self._Model = AutoModelForSeq2SeqLM.from_pretrained(model_name,
                                                           cache_dir       = "cache",
                                                           resume_download = True)
-    self._save()
+    self._save_model()
+
 
 #------------------------------------------------------------------------------
-#-- _empty_gpu_cache
+#--
 #------------------------------------------------------------------------------
   def _empty_gpu_cache(self):
     logger.log.debug("Clearing GPU cache")
@@ -336,8 +396,9 @@ class Model():
       torch.cuda.empty_cache()
     self._get_gpu_info()
 
+
 #------------------------------------------------------------------------------
-#-- _get_gpu_info
+#--
 #------------------------------------------------------------------------------
   def _get_gpu_info(self):
     logger.log.debug("---------------Memory allocated---------------")
@@ -349,9 +410,10 @@ class Model():
     logger.log.debug("---------------Max memory reserved---------------")
     logger.log.debug(human_readable(torch.cuda.max_memory_reserved()))
 
-  #------------------------------------------------------------------------------
-  # create_offload_folder
-  #------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
   def create_offload_folder(self):
     if self._model_type == Model_Type.GENERATION.value:
       logger.log.debug("Creating temporary folder for offloading.")
