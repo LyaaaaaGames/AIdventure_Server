@@ -90,6 +90,12 @@
 #--  - 08/05/2022 Lyaaaaa
 #--    - Updated handle_request to receive the limit_memory parameter from the
 #--        client.
+#--
+#--  - 18/09/2023 Lyaaaaa
+#--    - Deleted init_logger function as it has been moved to logger.py since a while.
+#--    - Replaced the print here and there by logger.log.info
+#--    - Updated the exceptions handlers in handler to display the error.
+#--    - Updated shutdown_server to receive an exit code and to display a message.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -114,20 +120,11 @@ from_eng_translator = None
 to_eng_translator   = None
 
 #------------------------------------------------------------------------------
-# init_logger
-#------------------------------------------------------------------------------
-def init_logger():
-  logger = logging.getLogger("websockets.server")
-  logger.setLevel(logging.ERROR)
-  logger.addHandler(logging.StreamHandler())
-
-
-#------------------------------------------------------------------------------
-# handler
+#
 #------------------------------------------------------------------------------
 async def handler(p_websocket, path):
   client_ip = p_websocket.remote_address[0]
-  print("Client " + client_ip + " connected")
+  logger.log.info("Client " + client_ip + " connected")
 
   try:
     async for message in p_websocket:
@@ -137,21 +134,19 @@ async def handler(p_websocket, path):
       if data_to_send != None:
         await p_websocket.send(data_to_send)
 
-  except websockets.exceptions.ConnectionClosedOK:
-    print("Closing the server")
-    shutdown_server()
+  except websockets.exceptions.ConnectionClosed as e:
+    logger.info(e)
+    exit_code = 0
+    shutdown_server(exit_code)
 
-  except websockets.exceptions.ConnectionClosedError:
-    print("Closing the server")
-    shutdown_server()
-
-  except:
-    print("Unexpected error shutting down the server")
-    shutdown_server()
+  except Exception as e:
+    logger.log.error(e)
+    exit_code = 0
+    shutdown_server(exit_code)
 
 
 #------------------------------------------------------------------------------
-# handle_request
+#
 #------------------------------------------------------------------------------
 def handle_request(p_websocket, p_data : dict):
   global generator
@@ -228,7 +223,7 @@ def handle_request(p_websocket, p_data : dict):
 
 
 #------------------------------------------------------------------------------
-# translate
+#
 #------------------------------------------------------------------------------
 def translate_text(p_prompt : str, p_to_eng : bool = True):
   global from_eng_translator
@@ -247,10 +242,11 @@ def translate_text(p_prompt : str, p_to_eng : bool = True):
 
 
 #------------------------------------------------------------------------------
-# shutdown_server
+#
 #------------------------------------------------------------------------------
-def shutdown_server():
-  exit()
+def shutdown_server(p_exit_code : int = 0):
+  logger.log.info("Shutting down the server")
+  exit(p_exit_code)
 
 
 #------------------------------------------------------------------------------
@@ -259,7 +255,7 @@ def shutdown_server():
 async def main():
   logger.init_logger()
   async with websockets.serve(handler, HOST, PORT):
-      print("Server started ws://%s:%s" % (HOST, PORT))
+      logger.log.info("Server started ws://%s:%s" % (HOST, PORT))
       await asyncio.Future()
 
 
@@ -267,7 +263,7 @@ try:
   asyncio.run(main())
 
 except KeyboardInterrupt:
-  print("Server stopped.")
+  logger.log.info("Server stopped by keyboard interruption.")
 
 
 
