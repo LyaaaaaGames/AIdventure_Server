@@ -155,6 +155,12 @@
 #--    - Updated create_offload_folder to remove the unefficient check by another.
 #--        Now the temp folder is only created if the model is a generator and
 #--        not a translator.
+#--
+#--  - 18/09/2023 Lyaaaaa
+#--    - Updated _load to display messages as error instead of info when an error
+#--        happens when loading the tokens.
+#--    - Updated __init__ to log as error "Couldn't load the model files." instead
+#--        of info.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -210,7 +216,7 @@ class Model():
       if self._allow_download == True:
         self._download()
       else:
-        logger.log.info("Couldn't load the model files.")
+        logger.log.error("Couldn't load the model files.")
         logger.log.info("Downloading the model with the server is disabled.")
     else:
       logger.log.info("Model successfully loaded from local file")
@@ -260,8 +266,8 @@ class Model():
     try:
       self._Tokenizer = AutoTokenizer.from_pretrained(self._tokenizers_path)
     except Exception as e:
-      logger.log.info("Token file in '" + self._tokenizers_path + "' not found.")
-      logger.log
+      logger.log.error("Token file in '" + self._tokenizers_path + "' not found.")
+      logger.log.error(e)
       return False
 
     try:
