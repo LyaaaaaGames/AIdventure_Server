@@ -96,6 +96,11 @@
 #--    - Replaced the print here and there by logger.log.info
 #--    - Updated the exceptions handlers in handler to display the error.
 #--    - Updated shutdown_server to receive an exit code and to display a message.
+#--
+#--  - 19/09/2023 Lyaaaaa
+#--    - Fixed a syntax error in handler.
+#--    - Updated handle_request to define parameters differently depending of
+#--        the model type (generator or translator).
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -135,7 +140,7 @@ async def handler(p_websocket, path):
         await p_websocket.send(data_to_send)
 
   except websockets.exceptions.ConnectionClosed as e:
-    logger.info(e)
+    logger.info.error(e)
     exit_code = 0
     shutdown_server(exit_code)
 
@@ -175,16 +180,15 @@ def handle_request(p_websocket, p_data : dict):
     shutdown_server()
 
   elif request == Request.LOAD_MODEL.value:
-    parameters = {"low_memory_mode" : p_data['low_memory_mode'],
-                  "allow_offload"   : p_data['allow_offload'],
-                  "limit_memory"    : p_data['limit_memory'],
-                  "max_memory"      : p_data['max_memory'],
-                  "allow_download"  : p_data['allow_download'],
-                  "device_map"      : p_data['device_map'],
-                  "torch_dtype"     : p_data['torch_dtype'],
-                  "offload_dict"    : p_data['offload_dict'],}
-
     if p_data["model_type"] == Model_Type.GENERATION.value:
+      parameters = {"low_memory_mode" : p_data['low_memory_mode'],
+                    "allow_offload"   : p_data['allow_offload'],
+                    "limit_memory"    : p_data['limit_memory'],
+                    "max_memory"      : p_data['max_memory'],
+                    "allow_download"  : p_data['allow_download'],
+                    "device_map"      : p_data['device_map'],
+                    "torch_dtype"     : p_data['torch_dtype'],
+                    "offload_dict"    : p_data['offload_dict'],}
       del generator
       logger.log.debug("loading generator")
       model_name = p_data['model_name']
@@ -195,6 +199,7 @@ def handle_request(p_websocket, p_data : dict):
       logger.log.info("Is CUDA available: " + format(generator.is_cuda_available))
 
     elif p_data["model_type"] == Model_Type.TRANSLATION.value:
+      parameters = {"low_memory_mode" : p_data['low_memory_mode']}
       logger.log.debug("loading translator")
       model_name = p_data["to_eng_model"]
       to_eng_translator = Translator(model_name,
