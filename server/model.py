@@ -165,6 +165,15 @@
 #--    - Extracted from init to load the code related to the loading of files.
 #--    - Splitted download into download_model and download_tokens.
 #--    - Splitted save into save_model and save_tokens.
+#--
+#--  - 19/09/2023 Lyaaaaa
+#--    - Updated _set_model_parameters to set all the parameters only for the
+#--        generators (except low_memory_mode which is used by the translator too).
+#--    - Removed some log from _load as they are repeating themself.
+#--    - Updated _download_tokens to directly use self._model_name.
+#--    - Fixed an error in _download_model. It used model_name which doesn't
+#--        exist. Now it uses self._model_name.
+#--    - Updated the logs in  _load_model and _load_tokens.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -230,29 +239,30 @@ class Model():
     if self._low_memory_mode == None:
       self._low_memory_mode  = p_parameters["low_memory_mode"]
 
-    if self._limit_memory == False:
-      self._max_memory = None
-    elif self._limit_memory == None and p_parameters["limit_memory"] == True:
-      self._max_memory = {0     : p_parameters["max_memory"]["0"],
-                          "cpu" : p_parameters["max_memory"]["cpu"]}
+    if self._model_type == Model_Type.GENERATION.value:
+      if self._limit_memory == False:
+        self._max_memory = None
+      elif self._limit_memory == None and p_parameters["limit_memory"] == True:
+        self._max_memory = {0     : p_parameters["max_memory"]["0"],
+                            "cpu" : p_parameters["max_memory"]["cpu"]}
 
-    if self._allow_offload == True:
-      self.create_offload_folder()
-    elif self._allow_offload == None and p_parameters["allow_offload"] == True:
-      self.create_offload_folder()
+      if self._allow_offload == True:
+        self.create_offload_folder()
+      elif self._allow_offload == None and p_parameters["allow_offload"] == True:
+        self.create_offload_folder()
 
 
-    if self._allow_download == None:
-      self._allow_download = p_parameters["allow_download"]
+      if self._allow_download == None:
+        self._allow_download = p_parameters["allow_download"]
 
-    if self._device_map == None:
-      self._device_map = p_parameters["device_map"]
+      if self._device_map == None:
+        self._device_map = p_parameters["device_map"]
 
-    if self._torch_dtype == None:
-      self._torch_dtype = Torch_Dtypes.dtypes.value[p_parameters["torch_dtype"]]
+      if self._torch_dtype == None:
+        self._torch_dtype = Torch_Dtypes.dtypes.value[p_parameters["torch_dtype"]]
 
-    if self._offload_dict == None:
-      self._offload_dict = p_parameters["offload_dict"]
+      if self._offload_dict == None:
+        self._offload_dict = p_parameters["offload_dict"]
 
 #------------------------------------------------------------------------------
 #--
@@ -264,7 +274,6 @@ class Model():
       if self._allow_download == True:
         self._download_tokens()
       else:
-        logger.log.error("Couldn't load the tokens files.")
         logger.log.info("Downloading with the server is disabled")
     else:
       logger.log.info("Tokens successfully loaded from local files")
@@ -280,7 +289,6 @@ class Model():
       if self._allow_download == True:
         self._download_model()
       else:
-        logger.log.error("Couldn't load the model " + self._model_name)
         logger.log.info("Downloading with the server is disabled.")
     else:
       logger.log.info("Model successfully loaded from local files")
@@ -295,7 +303,7 @@ class Model():
     try:
       self._Tokenizer = AutoTokenizer.from_pretrained(self._tokenizers_path)
     except Exception as e:
-      logger.log.error("Token file in '" + self._tokenizers_path + "' not found.")
+      logger.log.error("Error loading tokens in " + self._tokenizers_path)
       logger.log.error(e)
       return False
 
@@ -320,7 +328,7 @@ class Model():
       self._Model = AutoModelForCausalLM.from_pretrained(self._model_path,
                                                          **args)
     except Exception as e:
-      logger.log.error("An unexpected error happened while loading the model")
+      logger.log.error("Error loading the model " + self._model_name)
       logger.log.error(e)
       return False
 
@@ -360,9 +368,8 @@ class Model():
 #--
 #------------------------------------------------------------------------------
   def _download_tokens(self):
-    model_name = self._model_name
     logger.log.info("Trying to download the tokenizer...")
-    self._Tokenizer = AutoTokenizer.from_pretrained(model_name,
+    self._Tokenizer = AutoTokenizer.from_pretrained(self._model_name,
                                                     cache_dir       = "cache",
                                                     resume_download = True)
     self._save_tokens()
@@ -374,11 +381,11 @@ class Model():
   def _download_model(self):
     logger.log.info("Trying to download the model...")
     if self._model_type == Model_Type.GENERATION.value:
-      self._Model = AutoModelForCausalLM.from_pretrained(model_name,
+      self._Model = AutoModelForCausalLM.from_pretrained(self._model_name,
                                                          cache_dir       = "cache",
                                                          resume_download = True)
     elif self._model_type == Model_Type.TRANSLATION.value:
-      self._Model = AutoModelForSeq2SeqLM.from_pretrained(model_name,
+      self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_name,
                                                           cache_dir       = "cache",
                                                           resume_download = True)
     self._save_model()
