@@ -73,6 +73,34 @@
 #--        exit.
 #--    - Updated handle_request to receive low_memory_mode value from the client.
 #--    - Updated the call of Generator constructor to send it low_memory_mode
+#--
+#--  - 04/05/2022 Lyaaaaa
+#--    - Updated handle_request to receive the new parameters and send them inside
+#--        a list to the Generator class. Removed use_gpu var.
+#--
+#--  - 05/05/2022 Lyaaaaa
+#--    - del generator now happens only when loading a new generator.
+#--    - Added offload_dict to the parameters list.
+#--    - Removed use_gpu from the parameters passed to the translators init.
+#--    - Removed the log about the translator using the gpu.
+#--
+#--  - 07/05/2022 Lyaaaaa
+#--    - Removed the import of the downloader and its use inside this script.
+#--
+#--  - 08/05/2022 Lyaaaaa
+#--    - Updated handle_request to receive the limit_memory parameter from the
+#--        client.
+#--
+#--  - 18/09/2023 Lyaaaaa
+#--    - Deleted init_logger function as it has been moved to logger.py since a while.
+#--    - Replaced the print here and there by logger.log.info
+#--    - Updated the exceptions handlers in handler to display the error.
+#--    - Updated shutdown_server to receive an exit code and to display a message.
+#--
+#--  - 19/09/2023 Lyaaaaa
+#--    - Fixed a syntax error in handler.
+#--    - Updated handle_request to define parameters differently depending of
+#--        the model type (generator or translator).
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -87,7 +115,6 @@ from request    import Request
 from generator  import Generator
 from translator import Translator
 from model_type import Model_Type
-from downloader import download_file
 
 
 HOST = config.HOST
@@ -98,20 +125,11 @@ from_eng_translator = None
 to_eng_translator   = None
 
 #------------------------------------------------------------------------------
-# init_logger
-#------------------------------------------------------------------------------
-def init_logger():
-  logger = logging.getLogger("websockets.server")
-  logger.setLevel(logging.ERROR)
-  logger.addHandler(logging.StreamHandler())
-
-
-#------------------------------------------------------------------------------
-# handler
+#
 #------------------------------------------------------------------------------
 async def handler(p_websocket, path):
   client_ip = p_websocket.remote_address[0]
-  print("Client " + client_ip + " connected")
+  logger.log.info("Client " + client_ip + " connected")
 
   try:
     async for message in p_websocket:
@@ -121,21 +139,19 @@ async def handler(p_websocket, path):
       if data_to_send != None:
         await p_websocket.send(data_to_send)
 
-  except websockets.exceptions.ConnectionClosedOK:
-    print("Closing the server")
-    shutdown_server()
+  except websockets.exceptions.ConnectionClosed as e:
+    logger.info.error(e)
+    exit_code = 0
+    shutdown_server(exit_code)
 
-  except websockets.exceptions.ConnectionClosedError:
-    print("Closing the server")
-    shutdown_server()
-
-  except:
-    print("Unexpected error shutting down the server")
-    shutdown_server()
+  except Exception as e:
+    logger.log.error(e)
+    exit_code = 0
+    shutdown_server(exit_code)
 
 
 #------------------------------------------------------------------------------
-# handle_request
+#
 #------------------------------------------------------------------------------
 def handle_request(p_websocket, p_data : dict):
   global generator
@@ -164,46 +180,41 @@ def handle_request(p_websocket, p_data : dict):
     shutdown_server()
 
   elif request == Request.LOAD_MODEL.value:
-    use_gpu         = p_data['use_gpu']
-    low_memory_mode = p_data['low_memory_mode']
-
     if p_data["model_type"] == Model_Type.GENERATION.value:
+      parameters = {"low_memory_mode" : p_data['low_memory_mode'],
+                    "allow_offload"   : p_data['allow_offload'],
+                    "limit_memory"    : p_data['limit_memory'],
+                    "max_memory"      : p_data['max_memory'],
+                    "allow_download"  : p_data['allow_download'],
+                    "device_map"      : p_data['device_map'],
+                    "torch_dtype"     : p_data['torch_dtype'],
+                    "offload_dict"    : p_data['offload_dict'],}
+      del generator
       logger.log.debug("loading generator")
       model_name = p_data['model_name']
 
-      generator  = Generator(model_name,
+      generator = Generator(model_name,
                              Model_Type.GENERATION.value,
-                             use_gpu,
-                             low_memory_mode)
+                             parameters)
       logger.log.info("Is CUDA available: " + format(generator.is_cuda_available))
-      logger.log.debug("Is GPU enabled for the generator: " + format(generator.is_gpu_enabled))
 
     elif p_data["model_type"] == Model_Type.TRANSLATION.value:
+      parameters = {"low_memory_mode" : p_data['low_memory_mode']}
       logger.log.debug("loading translator")
       model_name = p_data["to_eng_model"]
       to_eng_translator = Translator(model_name,
                                      Model_Type.TRANSLATION.value,
-                                     use_gpu)
-      logger.log.debug("Is GPU enabled for the to_eng translator: " + format(to_eng_translator.is_gpu_enabled))
+                                     parameters)
 
       model_name = p_data["from_eng_model"]
       from_eng_translator = Translator(model_name,
                                        Model_Type.TRANSLATION.value,
-                                       use_gpu)
-      logger.log.debug("Is GPU enabled for the from_eng translator: " + format(from_eng_translator.is_gpu_enabled))
+                                       parameters)
 
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)
 
     return p_data
-
-  elif request == Request.DOWNLOAD_MODEL.value:
-    url        = p_data["url"]
-    save_path  = p_data["save_path"]
-    download_file(url, save_path)
-
-    p_data['request'] = Request.DOWNLOADED_MODEL.value
-    p_data            = Json_Utils.json_to_string(p_data)
 
 
   elif request == Request.TEXT_TRANSLATION.value:
@@ -217,7 +228,7 @@ def handle_request(p_websocket, p_data : dict):
 
 
 #------------------------------------------------------------------------------
-# translate
+#
 #------------------------------------------------------------------------------
 def translate_text(p_prompt : str, p_to_eng : bool = True):
   global from_eng_translator
@@ -236,10 +247,11 @@ def translate_text(p_prompt : str, p_to_eng : bool = True):
 
 
 #------------------------------------------------------------------------------
-# shutdown_server
+#
 #------------------------------------------------------------------------------
-def shutdown_server():
-  exit()
+def shutdown_server(p_exit_code : int = 0):
+  logger.log.info("Shutting down the server")
+  exit(p_exit_code)
 
 
 #------------------------------------------------------------------------------
@@ -248,7 +260,7 @@ def shutdown_server():
 async def main():
   logger.init_logger()
   async with websockets.serve(handler, HOST, PORT):
-      print("Server started ws://%s:%s" % (HOST, PORT))
+      logger.log.info("Server started ws://%s:%s" % (HOST, PORT))
       await asyncio.Future()
 
 
@@ -256,7 +268,7 @@ try:
   asyncio.run(main())
 
 except KeyboardInterrupt:
-  print("Server stopped.")
+  logger.log.info("Server stopped by keyboard interruption.")
 
 
 
