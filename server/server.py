@@ -101,6 +101,9 @@
 #--    - Fixed a syntax error in handler.
 #--    - Updated handle_request to define parameters differently depending of
 #--        the model type (generator or translator).
+#--
+#--  - 25/10/2023 Lyaaaaa
+#--    - Fixed syntax error in handler. See https://github.com/LyaaaaaGames/AIdventure_Server/issues/25
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -140,7 +143,7 @@ async def handler(p_websocket, path):
         await p_websocket.send(data_to_send)
 
   except websockets.exceptions.ConnectionClosed as e:
-    logger.info.error(e)
+    logger.log.error(e)
     exit_code = 0
     shutdown_server(exit_code)
 
