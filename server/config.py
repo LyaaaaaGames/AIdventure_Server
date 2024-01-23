@@ -44,6 +44,9 @@
 #--   18/09/2023 Lyaaaaa
 #--     - LOG_FILEMODE default value is now "a" again. The log file is now
 #--         manually deleted to avoid losing logs.
+#--
+#--   23/01/2024 Lyaaaaa
+#--     - Removed TOKENIZERS_PATH.
 #---------------------------------------------------------------------------
 
 import logging
@@ -61,7 +64,6 @@ LOG_LEVEL    = logging.INFO
 # Models.
 #See possible values here: https://huggingface.co/docs/transformers/main_classes/model#transformers.PreTrainedModel.from_pretrained
 
-TOKENIZERS_PATH    = "models/"
 MODELS_PATH        = "models/"
 DEFAULT_MODEL      = "EleutherAI/gpt-neo-125M"
 ALLOW_DOWNLOAD     = None # True/False/None. If True, the server will download AI's files.

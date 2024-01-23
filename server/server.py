@@ -104,6 +104,10 @@
 #--
 #--  - 25/10/2023 Lyaaaaa
 #--    - Fixed syntax error in handler. See https://github.com/LyaaaaaGames/AIdventure_Server/issues/25
+#--
+#--  - 23/01/2024 Lyaaaaa
+#--    - Updated handle_request to receive the models path in p_data and to use
+#--        it in the model constructor.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -194,25 +198,31 @@ def handle_request(p_websocket, p_data : dict):
                     "offload_dict"    : p_data['offload_dict'],}
       del generator
       logger.log.debug("loading generator")
-      model_name = p_data['model_name']
+      model_name = p_data["model_name"]
+      model_path = p_data["model_path"]
+
 
       generator = Generator(model_name,
-                             Model_Type.GENERATION.value,
-                             parameters)
+                            Model_Type.GENERATION.value,
+                            parameters,
+                            model_path)
       logger.log.info("Is CUDA available: " + format(generator.is_cuda_available))
 
     elif p_data["model_type"] == Model_Type.TRANSLATION.value:
       parameters = {"low_memory_mode" : p_data['low_memory_mode']}
       logger.log.debug("loading translator")
       model_name = p_data["to_eng_model"]
+      model_path = p_data["model_path"]
       to_eng_translator = Translator(model_name,
                                      Model_Type.TRANSLATION.value,
-                                     parameters)
+                                     parameters,
+                                     model_path)
 
       model_name = p_data["from_eng_model"]
       from_eng_translator = Translator(model_name,
                                        Model_Type.TRANSLATION.value,
-                                       parameters)
+                                       parameters,
+                                       model_path)
 
     p_data['request'] = Request.LOADED_MODEL.value
     p_data            = Json_Utils.json_to_string(p_data)

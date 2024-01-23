@@ -174,6 +174,15 @@
 #--    - Fixed an error in _download_model. It used model_name which doesn't
 #--        exist. Now it uses self._model_name.
 #--    - Updated the logs in  _load_model and _load_tokens.
+#--
+#--  - 23/01/2024 Lyaaaaa
+#--    - __init__ now expect a fourth parameter, model_path.
+#--    - _model_path is now set to p_model_path.
+#--    - Removed _tokenizers_path. A model's files are now all in the same folder.
+#--    - Extracted _load_translator to the Translator class to use polymorphism.
+#--    - Updated _load to always call _load_translator no matter the type of the model.
+#--        The specific behavior is implemented in children if needed (See Translator.py)
+#--    - _load_tokens and _save_tokens now use _model_path.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -196,7 +205,6 @@ class Model():
   _model_type : Model_Type
   _Model = None
 
-  _tokenizers_path = config.TOKENIZERS_PATH
   _model_path      = config.MODELS_PATH
   _allow_offload   = config.ALLOW_OFFLOAD
   _limit_memory    = config.LIMIT_MEMORY
@@ -215,10 +223,10 @@ class Model():
   def __init__(self,
                p_model_name = config.DEFAULT_MODEL,
                p_model_type = Model_Type.GENERATION.value,
-               p_parameters = {}):
+               p_parameters = {},
+               p_model_path = config.MODELS_PATH):
 
-    self._tokenizers_path  += p_model_name
-    self._model_path       += p_model_name
+    self._model_path       = p_model_path
     self._model_name       = p_model_name
     self.is_cuda_available = torch.cuda.is_available()
     self._model_type       = p_model_type
@@ -278,12 +286,7 @@ class Model():
     else:
       logger.log.info("Tokens successfully loaded from local files")
 
-
-    if self._model_type == Model_Type.GENERATION.value:
-      model_loaded = self._load_model()
-    elif self._model_type == Model_Type.TRANSLATION.value:
-      model_loaded = self._load_translator()
-
+    model_loaded = self._load_model()
 
     if model_loaded == False:
       if self._allow_download == True:
@@ -301,9 +304,9 @@ class Model():
 #------------------------------------------------------------------------------
   def _load_tokens(self):
     try:
-      self._Tokenizer = AutoTokenizer.from_pretrained(self._tokenizers_path)
+      self._Tokenizer = AutoTokenizer.from_pretrained(self._model_path)
     except Exception as e:
-      logger.log.error("Error loading tokens in " + self._tokenizers_path)
+      logger.log.error("Error loading tokens in " + self._model_path)
       logger.log.error(e)
       return False
 
@@ -338,23 +341,8 @@ class Model():
 #------------------------------------------------------------------------------
 #--
 #------------------------------------------------------------------------------
-  def _load_translator(self):
-    try:
-      self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_path)
-
-    except Exception as e:
-      logger.log.error("An unexpected error happened while loading the translator")
-      logger.log.error(e)
-      return False
-
-    return True
-
-
-#------------------------------------------------------------------------------
-#--
-#------------------------------------------------------------------------------
   def _save_tokens(self):
-    self._Tokenizer.save_pretrained(self._tokenizers_path)
+    self._Tokenizer.save_pretrained(self._model_path)
 
 
 #------------------------------------------------------------------------------

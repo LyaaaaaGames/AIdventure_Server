@@ -30,6 +30,9 @@
 #--    - Removed inputs.to("cuda"). The translators won't use the gpu anymore (for now).
 #--        The new system isn't supported by the MarianMT models and the generator
 #--        is more in need of the GPU.
+#--
+#--  - 23/01/2024 Lyaaaaa
+#--    - Added _load_model method (extracted from model.py. Old name "_load_translator")
 #------------------------------------------------------------------------------
 
 from model import Model
@@ -48,3 +51,18 @@ class Translator(Model):
     generated_text = self._Tokenizer.batch_decode(outputs, skip_special_tokens=True, use_cache=True)
 
     return generated_text[0]
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def _load_model(self):
+    try:
+      self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_path)
+
+    except Exception as e:
+      logger.log.error("An unexpected error happened while loading the translator")
+      logger.log.error(e)
+      return False
+
+    return True
