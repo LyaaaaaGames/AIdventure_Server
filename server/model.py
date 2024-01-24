@@ -183,6 +183,13 @@
 #--    - Updated _load to always call _load_translator no matter the type of the model.
 #--        The specific behavior is implemented in children if needed (See Translator.py)
 #--    - _load_tokens and _save_tokens now use _model_path.
+#--
+#--  - 24/01/2024 Lyaaaaa
+#--    - Fixed an error in create_offload_folder:
+#--       - It was the value of config.OFFLOAD_FOLDER to the temporary directory object
+#--         while it should be a string. So, when creating a new AI (e.g loading another generator)
+#--         it was leading to a type error. Moreover, Consistency of this 'temp' folder
+#--         isn't needed (at least for now).
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -415,5 +422,4 @@ class Model():
       cwd = os.getcwd()
       folder = tempfile.TemporaryDirectory(prefix = config.OFFLOAD_FOLDER,
                                            dir    = cwd)
-      config.OFFLOAD_FOLDER = folder
-      self._offload_folder  = config.OFFLOAD_FOLDER.name
+      self._offload_folder  = folder.name
