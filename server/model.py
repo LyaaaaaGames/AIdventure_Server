@@ -190,10 +190,21 @@
 #--         while it should be a string. So, when creating a new AI (e.g loading another generator)
 #--         it was leading to a type error. Moreover, Consistency of this 'temp' folder
 #--         isn't needed (at least for now).
+#--
+#--  - 25/01/2024 Lyaaaaa
+#--    - The class now uses polymorphism.
+#--    - Removed model_type and all the check related to the type of object.
+#--    - Extracted all the code related to the Generator to the Generator class.
+#--    - Extracted all the code related to the Translator to the Translator class.
+#--    - _set_model_parameters renamed _set_parameters.
+#--    - Updated __init__
+#--      - Removed the p_model_type parameter
+#--      - p_model_path is now the second parameter of __init__. p_parameters the third.
+#--      - Added a log message to display the model's name and its path.
+#--      - Added a log message to display if cuda is supported.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
-from model_type   import Model_Type
 from torch_dtype  import Torch_Dtypes
 from accelerate   import Accelerator
 
@@ -209,7 +220,6 @@ from utils import human_readable
 class Model():
 
   _Tokenizer  : AutoTokenizer
-  _model_type : Model_Type
   _Model = None
 
   _model_path      = config.MODELS_PATH
@@ -229,16 +239,18 @@ class Model():
 #------------------------------------------------------------------------------
   def __init__(self,
                p_model_name = config.DEFAULT_MODEL,
-               p_model_type = Model_Type.GENERATION.value,
-               p_parameters = {},
-               p_model_path = config.MODELS_PATH):
+               p_model_path = config.MODELS_PATH,
+               p_parameters = {}):
+
+    message = "Initialising the model: " + p_model_name + " at " + p_model_path
+    logger.log.info(message)
+    logger.log.info("Is CUDA available: " + format(torch.cuda.is_available()))
 
     self._model_path       = p_model_path
     self._model_name       = p_model_name
     self.is_cuda_available = torch.cuda.is_available()
-    self._model_type       = p_model_type
 
-    self._set_model_parameters(p_parameters)
+    self._set_parameters(p_parameters)
 
     self._empty_gpu_cache()
     self._load()
@@ -247,37 +259,10 @@ class Model():
 #------------------------------------------------------------------------------
 #--
 #------------------------------------------------------------------------------
-  def _set_model_parameters(self, p_parameters : dict):
-    logger.log.info("Setting up the model.")
+  def _set_parameters(self, p_parameters : dict):
+    # See children for implementation
     logger.log.debug(p_parameters)
 
-    if self._low_memory_mode == None:
-      self._low_memory_mode  = p_parameters["low_memory_mode"]
-
-    if self._model_type == Model_Type.GENERATION.value:
-      if self._limit_memory == False:
-        self._max_memory = None
-      elif self._limit_memory == None and p_parameters["limit_memory"] == True:
-        self._max_memory = {0     : p_parameters["max_memory"]["0"],
-                            "cpu" : p_parameters["max_memory"]["cpu"]}
-
-      if self._allow_offload == True:
-        self.create_offload_folder()
-      elif self._allow_offload == None and p_parameters["allow_offload"] == True:
-        self.create_offload_folder()
-
-
-      if self._allow_download == None:
-        self._allow_download = p_parameters["allow_download"]
-
-      if self._device_map == None:
-        self._device_map = p_parameters["device_map"]
-
-      if self._torch_dtype == None:
-        self._torch_dtype = Torch_Dtypes.dtypes.value[p_parameters["torch_dtype"]]
-
-      if self._offload_dict == None:
-        self._offload_dict = p_parameters["offload_dict"]
 
 #------------------------------------------------------------------------------
 #--
@@ -374,15 +359,7 @@ class Model():
 #--
 #------------------------------------------------------------------------------
   def _download_model(self):
-    logger.log.info("Trying to download the model...")
-    if self._model_type == Model_Type.GENERATION.value:
-      self._Model = AutoModelForCausalLM.from_pretrained(self._model_name,
-                                                         cache_dir       = "cache",
-                                                         resume_download = True)
-    elif self._model_type == Model_Type.TRANSLATION.value:
-      self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_name,
-                                                          cache_dir       = "cache",
-                                                          resume_download = True)
+    # See children for implementation
     self._save_model()
 
 
@@ -417,9 +394,8 @@ class Model():
 #--
 #------------------------------------------------------------------------------
   def create_offload_folder(self):
-    if self._model_type == Model_Type.GENERATION.value:
-      logger.log.debug("Creating temporary folder for offloading.")
-      cwd = os.getcwd()
-      folder = tempfile.TemporaryDirectory(prefix = config.OFFLOAD_FOLDER,
-                                           dir    = cwd)
-      self._offload_folder  = folder.name
+    logger.log.debug("Creating temporary folder for offloading.")
+    cwd = os.getcwd()
+    folder = tempfile.TemporaryDirectory(prefix = config.OFFLOAD_FOLDER,
+                                         dir    = cwd)
+    self._offload_folder  = folder.name

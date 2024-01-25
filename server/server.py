@@ -108,6 +108,12 @@
 #--  - 23/01/2024 Lyaaaaa
 #--    - Updated handle_request to receive the models path in p_data and to use
 #--        it in the model constructor.
+#--
+#--  - 25/01/2024 Lyaaaaa
+#--    - Removed model_type import and all its use in the code.
+#--    - Simplified handle_request by removing code repetition and extracting
+#--        part of code to specific functions.
+#--    - Added load_translator and load_generator functions.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -121,7 +127,6 @@ from json_utils import Json_Utils
 from request    import Request
 from generator  import Generator
 from translator import Translator
-from model_type import Model_Type
 
 
 HOST = config.HOST
@@ -179,65 +184,70 @@ def handle_request(p_websocket, p_data : dict):
                                              parameters)
 
     p_data["generated_text"] = generated_text
-    p_data = Json_Utils.json_to_string(p_data)
 
-    return p_data
 
   elif request == Request.SHUTDOWN.value:
     shutdown_server()
 
-  elif request == Request.LOAD_MODEL.value:
-    if p_data["model_type"] == Model_Type.GENERATION.value:
-      parameters = {"low_memory_mode" : p_data['low_memory_mode'],
-                    "allow_offload"   : p_data['allow_offload'],
-                    "limit_memory"    : p_data['limit_memory'],
-                    "max_memory"      : p_data['max_memory'],
-                    "allow_download"  : p_data['allow_download'],
-                    "device_map"      : p_data['device_map'],
-                    "torch_dtype"     : p_data['torch_dtype'],
-                    "offload_dict"    : p_data['offload_dict'],}
+
+  elif request == Request.LOAD_GENERATOR.value:
       del generator
-      logger.log.debug("loading generator")
-      model_name = p_data["model_name"]
-      model_path = p_data["model_path"]
+      generator = load_generator(p_data)
 
 
-      generator = Generator(model_name,
-                            Model_Type.GENERATION.value,
-                            parameters,
-                            model_path)
-      logger.log.info("Is CUDA available: " + format(generator.is_cuda_available))
+  elif request == Request.LOAD_TRANSLATOR.value:
+    del to_eng_translator
+    del from_eng_translator
 
-    elif p_data["model_type"] == Model_Type.TRANSLATION.value:
-      parameters = {"low_memory_mode" : p_data['low_memory_mode']}
-      logger.log.debug("loading translator")
-      model_name = p_data["to_eng_model"]
-      model_path = p_data["model_path"]
-      to_eng_translator = Translator(model_name,
-                                     Model_Type.TRANSLATION.value,
-                                     parameters,
-                                     model_path)
+    model_name = p_data["to_eng_model"]
+    model_path = p_data["to_eng_model_path"]
+    to_eng_translator = load_translator(model_name, model_path)
 
-      model_name = p_data["from_eng_model"]
-      from_eng_translator = Translator(model_name,
-                                       Model_Type.TRANSLATION.value,
-                                       parameters,
-                                       model_path)
-
-    p_data['request'] = Request.LOADED_MODEL.value
-    p_data            = Json_Utils.json_to_string(p_data)
-
-    return p_data
+    model_name = p_data["from_eng_model"]
+    model_path = p_data["from_eng_model_path"]
+    from_eng_translator = load_translator(model_name, model_path)
 
 
   elif request == Request.TEXT_TRANSLATION.value:
     prompt = p_data["prompt"]
     to_eng = p_data["to_eng"]
-
     p_data["translated_text"] = translate_text(prompt, to_eng)
-    p_data = Json_Utils().json_to_string(p_data)
 
+  p_data = Json_Utils().json_to_string(p_data)
   return p_data
+
+
+#------------------------------------------------------------------------------
+#
+#------------------------------------------------------------------------------
+def load_translator(p_model_name : str,
+                    p_model_path : str,
+                    p_parameter  : dict = {}):
+  logger.log.debug("loading translator")
+  translator = Translator(p_model_name, p_model_path, p_parameter)
+  return translator
+
+
+#------------------------------------------------------------------------------
+#
+#------------------------------------------------------------------------------
+def load_generator(p_data : dict):
+  parameters = {"low_memory_mode" : p_data['low_memory_mode'],
+                "allow_offload"   : p_data['allow_offload'],
+                "limit_memory"    : p_data['limit_memory'],
+                "max_memory"      : p_data['max_memory'],
+                "allow_download"  : p_data['allow_download'],
+                "device_map"      : p_data['device_map'],
+                "torch_dtype"     : p_data['torch_dtype'],
+                "offload_dict"    : p_data['offload_dict'],}
+  model_name = p_data["model_name"]
+  model_path = p_data["model_path"]
+
+
+  generator = Generator(model_name,
+                        model_path,
+                        parameters)
+  return generator
 
 
 #------------------------------------------------------------------------------

@@ -30,15 +30,20 @@
 #--
 #--  - 01/03/2022 Lyaaaaa
 #--    - Added TEXT_TRANSLATION request.
+#--
+#--  - 25/01/2024 Lyaaaaa
+#--    - LOAD_MODEL becomes LOAD_GENERATOR.
+#--    - Added LOAD_TRANSLATOR (value 8)
 #------------------------------------------------------------------------------
 
 from enum import Enum
 
 class Request(Enum):
   TEXT_GENERATION  = 1
-  LOAD_MODEL       = 2
+  LOAD_GENERATOR   = 2
   SHUTDOWN         = 3
   LOADED_MODEL     = 4
   DOWNLOAD_MODEL   = 5
   DOWNLOADED_MODEL = 6
   TEXT_TRANSLATION = 7
+  LOAD_TRANSLATOR  = 8

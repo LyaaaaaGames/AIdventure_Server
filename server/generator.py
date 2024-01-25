@@ -31,10 +31,16 @@
 #--        and not checking the is_gpu_enabled attribute anymore.
 #--    - Import logger to display a log when loading the inputs in the gpu.
 #--    - Called _empty_gpu_cache after the generation. This releases some memory.
+#--
+#--  - 25/01/2024 Lyaaaaa
+#--    - The class now uses polymorphism.
+#--    - Added torch_dtype and more transformers imports.
+#--    - Added _set_parameters and _download_model methods inherited from Model.
 #------------------------------------------------------------------------------
 
-from model import Model
-from transformers import GenerationConfig
+from model        import Model
+from torch_dtype  import Torch_Dtypes
+from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, GenerationConfig
 import logger
 
 class Generator(Model):
@@ -62,3 +68,48 @@ class Generator(Model):
 
     self._empty_gpu_cache()
     return generated_text
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def _set_parameters(self, p_parameters : dict):
+    logger.log.info("Setting up the Generator.")
+    super()._set_parameters(p_parameters)
+
+    if self._limit_memory == False:
+      self._max_memory = None
+    elif self._limit_memory == None and p_parameters["limit_memory"] == True:
+      self._max_memory = {0     : p_parameters["max_memory"]["0"],
+                          "cpu" : p_parameters["max_memory"]["cpu"]}
+
+    if self._allow_offload == True:
+      self.create_offload_folder()
+    elif self._allow_offload == None and p_parameters["allow_offload"] == True:
+      self.create_offload_folder()
+
+
+    if self._allow_download == None:
+      self._allow_download = p_parameters["allow_download"]
+
+    if self._device_map == None:
+      self._device_map = p_parameters["device_map"]
+
+    if self._torch_dtype == None:
+      self._torch_dtype = Torch_Dtypes.dtypes.value[p_parameters["torch_dtype"]]
+
+    if self._offload_dict == None:
+      self._offload_dict = p_parameters["offload_dict"]
+
+    if self._low_memory_mode == None:
+      self._low_memory_mode  = p_parameters["low_memory_mode"]
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def _download_model(self):
+    self._Model = AutoModelForCausalLM.from_pretrained(self._model_name,
+                                                       cache_dir       = "cache",
+                                                       resume_download = True)
+    super()._download_model()
