@@ -36,6 +36,10 @@
 #--    - The class now uses polymorphism.
 #--    - Added torch_dtype and more transformers imports.
 #--    - Added _set_parameters and _download_model methods inherited from Model.
+#--
+#--  - 31/01/2024 Lyaaaaa
+#--    - generate_text now longer receives memory and context as parameters.
+#--        They are embedded in the prompt parameter by the client.
 #------------------------------------------------------------------------------
 
 from model        import Model
@@ -50,12 +54,9 @@ class Generator(Model):
 #------------------------------------------------------------------------------
   def generate_text(self,
                     p_prompt     = None,
-                    p_context    = None,
-                    p_memory     = None,
                     p_parameters = None):
 
-    model_input    = p_memory + p_context + p_prompt
-    model_input    = self._Tokenizer(model_input, return_tensors = "pt")
+    model_input    = self._Tokenizer(p_prompt, return_tensors = "pt")
 
     if self.is_cuda_available:
       logger.log.info("Loading inputs to GPU")
@@ -113,3 +114,4 @@ class Generator(Model):
                                                        cache_dir       = "cache",
                                                        resume_download = True)
     super()._download_model()
+

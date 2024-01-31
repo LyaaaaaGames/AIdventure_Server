@@ -114,6 +114,10 @@
 #--    - Simplified handle_request by removing code repetition and extracting
 #--        part of code to specific functions.
 #--    - Added load_translator and load_generator functions.
+#--
+#--  - 31/01/2024 Lyaaaaa
+#--    - generate_text now longer receives memory and context as parameters.
+#--        They are embedded in the prompt parameter by the client.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -174,14 +178,9 @@ def handle_request(p_websocket, p_data : dict):
 
   if request == Request.TEXT_GENERATION.value:
     prompt     = p_data['prompt']
-    context    = p_data['context']
-    memory     = p_data['memory']
     parameters = p_data['parameters']
 
-    generated_text = generator.generate_text(prompt,
-                                             context,
-                                             memory,
-                                             parameters)
+    generated_text = generator.generate_text(prompt, parameters)
 
     p_data["generated_text"] = generated_text
 
