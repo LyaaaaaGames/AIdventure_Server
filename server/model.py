@@ -174,10 +174,37 @@
 #--    - Fixed an error in _download_model. It used model_name which doesn't
 #--        exist. Now it uses self._model_name.
 #--    - Updated the logs in  _load_model and _load_tokens.
+#--
+#--  - 23/01/2024 Lyaaaaa
+#--    - __init__ now expect a fourth parameter, model_path.
+#--    - _model_path is now set to p_model_path.
+#--    - Removed _tokenizers_path. A model's files are now all in the same folder.
+#--    - Extracted _load_translator to the Translator class to use polymorphism.
+#--    - Updated _load to always call _load_translator no matter the type of the model.
+#--        The specific behavior is implemented in children if needed (See Translator.py)
+#--    - _load_tokens and _save_tokens now use _model_path.
+#--
+#--  - 24/01/2024 Lyaaaaa
+#--    - Fixed an error in create_offload_folder:
+#--       - It was the value of config.OFFLOAD_FOLDER to the temporary directory object
+#--         while it should be a string. So, when creating a new AI (e.g loading another generator)
+#--         it was leading to a type error. Moreover, Consistency of this 'temp' folder
+#--         isn't needed (at least for now).
+#--
+#--  - 25/01/2024 Lyaaaaa
+#--    - The class now uses polymorphism.
+#--    - Removed model_type and all the check related to the type of object.
+#--    - Extracted all the code related to the Generator to the Generator class.
+#--    - Extracted all the code related to the Translator to the Translator class.
+#--    - _set_model_parameters renamed _set_parameters.
+#--    - Updated __init__
+#--      - Removed the p_model_type parameter
+#--      - p_model_path is now the second parameter of __init__. p_parameters the third.
+#--      - Added a log message to display the model's name and its path.
+#--      - Added a log message to display if cuda is supported.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
-from model_type   import Model_Type
 from torch_dtype  import Torch_Dtypes
 from accelerate   import Accelerator
 
@@ -193,10 +220,8 @@ from utils import human_readable
 class Model():
 
   _Tokenizer  : AutoTokenizer
-  _model_type : Model_Type
   _Model = None
 
-  _tokenizers_path = config.TOKENIZERS_PATH
   _model_path      = config.MODELS_PATH
   _allow_offload   = config.ALLOW_OFFLOAD
   _limit_memory    = config.LIMIT_MEMORY
@@ -214,16 +239,18 @@ class Model():
 #------------------------------------------------------------------------------
   def __init__(self,
                p_model_name = config.DEFAULT_MODEL,
-               p_model_type = Model_Type.GENERATION.value,
+               p_model_path = config.MODELS_PATH,
                p_parameters = {}):
 
-    self._tokenizers_path  += p_model_name
-    self._model_path       += p_model_name
+    message = "Initialising the model: " + p_model_name + " at " + p_model_path
+    logger.log.info(message)
+    logger.log.info("Is CUDA available: " + format(torch.cuda.is_available()))
+
+    self._model_path       = p_model_path
     self._model_name       = p_model_name
     self.is_cuda_available = torch.cuda.is_available()
-    self._model_type       = p_model_type
 
-    self._set_model_parameters(p_parameters)
+    self._set_parameters(p_parameters)
 
     self._empty_gpu_cache()
     self._load()
@@ -232,37 +259,10 @@ class Model():
 #------------------------------------------------------------------------------
 #--
 #------------------------------------------------------------------------------
-  def _set_model_parameters(self, p_parameters : dict):
-    logger.log.info("Setting up the model.")
+  def _set_parameters(self, p_parameters : dict):
+    # See children for implementation
     logger.log.debug(p_parameters)
 
-    if self._low_memory_mode == None:
-      self._low_memory_mode  = p_parameters["low_memory_mode"]
-
-    if self._model_type == Model_Type.GENERATION.value:
-      if self._limit_memory == False:
-        self._max_memory = None
-      elif self._limit_memory == None and p_parameters["limit_memory"] == True:
-        self._max_memory = {0     : p_parameters["max_memory"]["0"],
-                            "cpu" : p_parameters["max_memory"]["cpu"]}
-
-      if self._allow_offload == True:
-        self.create_offload_folder()
-      elif self._allow_offload == None and p_parameters["allow_offload"] == True:
-        self.create_offload_folder()
-
-
-      if self._allow_download == None:
-        self._allow_download = p_parameters["allow_download"]
-
-      if self._device_map == None:
-        self._device_map = p_parameters["device_map"]
-
-      if self._torch_dtype == None:
-        self._torch_dtype = Torch_Dtypes.dtypes.value[p_parameters["torch_dtype"]]
-
-      if self._offload_dict == None:
-        self._offload_dict = p_parameters["offload_dict"]
 
 #------------------------------------------------------------------------------
 #--
@@ -278,12 +278,7 @@ class Model():
     else:
       logger.log.info("Tokens successfully loaded from local files")
 
-
-    if self._model_type == Model_Type.GENERATION.value:
-      model_loaded = self._load_model()
-    elif self._model_type == Model_Type.TRANSLATION.value:
-      model_loaded = self._load_translator()
-
+    model_loaded = self._load_model()
 
     if model_loaded == False:
       if self._allow_download == True:
@@ -301,9 +296,9 @@ class Model():
 #------------------------------------------------------------------------------
   def _load_tokens(self):
     try:
-      self._Tokenizer = AutoTokenizer.from_pretrained(self._tokenizers_path)
+      self._Tokenizer = AutoTokenizer.from_pretrained(self._model_path)
     except Exception as e:
-      logger.log.error("Error loading tokens in " + self._tokenizers_path)
+      logger.log.error("Error loading tokens in " + self._model_path)
       logger.log.error(e)
       return False
 
@@ -338,23 +333,8 @@ class Model():
 #------------------------------------------------------------------------------
 #--
 #------------------------------------------------------------------------------
-  def _load_translator(self):
-    try:
-      self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_path)
-
-    except Exception as e:
-      logger.log.error("An unexpected error happened while loading the translator")
-      logger.log.error(e)
-      return False
-
-    return True
-
-
-#------------------------------------------------------------------------------
-#--
-#------------------------------------------------------------------------------
   def _save_tokens(self):
-    self._Tokenizer.save_pretrained(self._tokenizers_path)
+    self._Tokenizer.save_pretrained(self._model_path)
 
 
 #------------------------------------------------------------------------------
@@ -379,15 +359,7 @@ class Model():
 #--
 #------------------------------------------------------------------------------
   def _download_model(self):
-    logger.log.info("Trying to download the model...")
-    if self._model_type == Model_Type.GENERATION.value:
-      self._Model = AutoModelForCausalLM.from_pretrained(self._model_name,
-                                                         cache_dir       = "cache",
-                                                         resume_download = True)
-    elif self._model_type == Model_Type.TRANSLATION.value:
-      self._Model = AutoModelForSeq2SeqLM.from_pretrained(self._model_name,
-                                                          cache_dir       = "cache",
-                                                          resume_download = True)
+    # See children for implementation
     self._save_model()
 
 
@@ -422,10 +394,8 @@ class Model():
 #--
 #------------------------------------------------------------------------------
   def create_offload_folder(self):
-    if self._model_type == Model_Type.GENERATION.value:
-      logger.log.debug("Creating temporary folder for offloading.")
-      cwd = os.getcwd()
-      folder = tempfile.TemporaryDirectory(prefix = config.OFFLOAD_FOLDER,
-                                           dir    = cwd)
-      config.OFFLOAD_FOLDER = folder
-      self._offload_folder  = config.OFFLOAD_FOLDER.name
+    logger.log.debug("Creating temporary folder for offloading.")
+    cwd = os.getcwd()
+    folder = tempfile.TemporaryDirectory(prefix = config.OFFLOAD_FOLDER,
+                                         dir    = cwd)
+    self._offload_folder  = folder.name
