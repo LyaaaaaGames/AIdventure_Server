@@ -118,6 +118,10 @@
 #--  - 31/01/2024 Lyaaaaa
 #--    - generate_text now longer receives memory and context as parameters.
 #--        They are embedded in the prompt parameter by the client.
+#--
+#--  - 07/05/2024 Lyaaaaa
+#--    - Updated handle_request and generation case to receive a banned_words
+#--        parameter and pass it to generator.generate_text
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -177,10 +181,11 @@ def handle_request(p_websocket, p_data : dict):
   request = p_data['request']
 
   if request == Request.TEXT_GENERATION.value:
-    prompt     = p_data['prompt']
-    parameters = p_data['parameters']
+    prompt       = p_data['prompt']
+    parameters   = p_data['parameters']
+    banned_words = p_data['banned_words']
 
-    generated_text = generator.generate_text(prompt, parameters)
+    generated_text = generator.generate_text(prompt, parameters, banned_words)
 
     p_data["generated_text"] = generated_text
 

@@ -40,6 +40,10 @@
 #--  - 31/01/2024 Lyaaaaa
 #--    - generate_text now longer receives memory and context as parameters.
 #--        They are embedded in the prompt parameter by the client.
+#--
+#--  - 07/05/2024 Lyaaaaa
+#--    - Updated generate_text to now be able to censor generation. The words
+#--        passed in p_banned_words parameters won't be generated anymore.
 #------------------------------------------------------------------------------
 
 from model        import Model
@@ -48,15 +52,23 @@ from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokeni
 import logger
 
 class Generator(Model):
-
 #------------------------------------------------------------------------------
 #-- generate_text
 #------------------------------------------------------------------------------
   def generate_text(self,
-                    p_prompt     = None,
-                    p_parameters = None):
+                    p_prompt       = None,
+                    p_parameters   = None,
+                    p_banned_words = []):
 
     model_input    = self._Tokenizer(p_prompt, return_tensors = "pt")
+
+    if p_banned_words:
+      banned_words_ids = self._Tokenizer(
+        p_banned_words,
+        add_special_tokens=False
+        ).input_ids
+
+      p_parameters["bad_words_ids"] = banned_words_ids
 
     if self.is_cuda_available:
       logger.log.info("Loading inputs to GPU")

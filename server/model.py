@@ -202,6 +202,10 @@
 #--      - p_model_path is now the second parameter of __init__. p_parameters the third.
 #--      - Added a log message to display the model's name and its path.
 #--      - Added a log message to display if cuda is supported.
+#--
+#--  - 07/05/2024 Lyaaaaa
+#--    - Updated _load_tokens to set add_prefix_space to True. It is needed
+#--        for using bad_words_ids parameter for generation.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -296,7 +300,10 @@ class Model():
 #------------------------------------------------------------------------------
   def _load_tokens(self):
     try:
-      self._Tokenizer = AutoTokenizer.from_pretrained(self._model_path)
+      self._Tokenizer = AutoTokenizer.from_pretrained(
+        self._model_path,
+        add_prefix_space=True
+        )
     except Exception as e:
       logger.log.error("Error loading tokens in " + self._model_path)
       logger.log.error(e)
