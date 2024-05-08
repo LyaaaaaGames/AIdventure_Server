@@ -202,6 +202,12 @@
 #--      - p_model_path is now the second parameter of __init__. p_parameters the third.
 #--      - Added a log message to display the model's name and its path.
 #--      - Added a log message to display if cuda is supported.
+#--
+#--  - 08/05/2024 Lyaaaaa
+#--    - Updated _load_model to force (if config.TORCH_DTYPE_SAFETY is True)
+#--        torch_dtype to be set to float32 if cuda isn't available.
+#--        Because otherwise, it will lead to an error during generation.
+#--        See https://github.com/LyaaaaaGames/AIdventure_Server/issues/31
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -319,6 +325,11 @@ class Model():
 
       logger.log.debug("Model settings:")
       logger.log.debug(args)
+
+      if not self.is_cuda_available and config.TORCH_DTYPE_SAFETY:
+        logger.log.warn("Cuda isn't available.")
+        logger.log.warn("Setting torch_dtype to float 32 to avoid error.")
+        args["torch_dtype"] = Torch_Dtypes.dtypes.value[Torch_Dtypes.FLOAT_32.value]
 
       self._Model = AutoModelForCausalLM.from_pretrained(self._model_path,
                                                          **args)
