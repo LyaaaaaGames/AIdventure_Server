@@ -203,6 +203,11 @@
 #--      - Added a log message to display the model's name and its path.
 #--      - Added a log message to display if cuda is supported.
 #--
+#--
+#--  - 07/05/2024 Lyaaaaa
+#--    - Updated _load_tokens to set add_prefix_space to True. It is needed
+#--        for using bad_words_ids parameter for generation.
+#--
 #--  - 08/05/2024 Lyaaaaa
 #--    - Updated _load_model to force (if config.TORCH_DTYPE_SAFETY is True)
 #--        torch_dtype to be set to float32 if cuda isn't available.
@@ -302,7 +307,10 @@ class Model():
 #------------------------------------------------------------------------------
   def _load_tokens(self):
     try:
-      self._Tokenizer = AutoTokenizer.from_pretrained(self._model_path)
+      self._Tokenizer = AutoTokenizer.from_pretrained(
+        self._model_path,
+        add_prefix_space=True
+        )
     except Exception as e:
       logger.log.error("Error loading tokens in " + self._model_path)
       logger.log.error(e)
