@@ -47,6 +47,9 @@
 #--
 #--   23/01/2024 Lyaaaaa
 #--     - Removed TOKENIZERS_PATH.
+#--
+#--   08/05/2024 Lyaaaaa
+#--     - Added TORCH_DTYPE_SAFETY.
 #---------------------------------------------------------------------------
 
 import logging
@@ -79,3 +82,5 @@ MAX_MEMORY        = None # None/dict/See documentation
 DEVICE_MAP        = None # None/see documentation
 TORCH_DTYPE       = None # "Auto"/None/torch.dtype/See torch_dtype.py for more info.
 
+# Safeguards
+TORCH_DTYPE_SAFETY = True # True/False. If CUDA isn't available, will enforce Torch_Dtype to float32 to avoir error. See issue https://github.com/LyaaaaaGames/AIdventure_Server/issues/31
