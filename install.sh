@@ -13,6 +13,7 @@
 #--
 #-- Anticipated changes (Leave empty if nothing to say):
 #--  - Add a choice to install cuda support or not.
+#--  - Add tests to check arch to download the correct conda instead of only x86_64
 #--
 #-- Changelog:
 #--   21/02/2022 Lyaaaaa
@@ -26,9 +27,12 @@
 #--
 #--   01/04/2023 Lyaaaaa
 #--     - Updated the miniconda link to use the newest version : 23.1.0-1.
+#--
+#--   06/08/2024 Lyaaaaa
+#--     - Updated the miniconda link to use the lastest every time.
 #---------------------------------------------------------------------------
 
-mini_conda_link="https://repo.anaconda.com/miniconda/Miniconda3-py39_23.1.0-1-Linux-x86_64.sh"
+mini_conda_link="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
 cache_folder="cache"
 environment_prefix="server/miniconda/"
 conda_environment_file="conda_config"
