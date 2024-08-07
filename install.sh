@@ -32,6 +32,7 @@
 #--     - Updated the miniconda link to use the lastest every time.
 #---------------------------------------------------------------------------
 
+# Find other installers here https://repo.anaconda.com/miniconda/ if needed.
 mini_conda_link="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
 cache_folder="cache"
 environment_prefix="server/miniconda/"
