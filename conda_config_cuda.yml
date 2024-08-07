@@ -9,8 +9,9 @@ dependencies:
   - pytorch
   - torchvision
   - torchaudio
-  - pytorch-cuda=11.8
-  - websockets=10.4
-  - transformers=4.27
+  - websockets=12.0
+  - transformers=4.43
   - sentencepiece
   - accelerate
+  - protobuf
+  - pytorch-cuda

@@ -11,9 +11,13 @@
 #-- Changelog:
 #--  - 05/12/2023 Lyaaaaa
 #--    - Created the file
+#--
+#--  - 06/08/2024 Lyaaaaa
+#--    - Added LlamaTokenizer to the imports to support Llama models.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import LlamaTokenizer
 from accelerate import Accelerator
 import tempfile
 import os
