@@ -1,0 +1,73 @@
+Assisted generation:
+Generator: gpt-neo-2.7B-Picard
+Asistant: gpt-neo-125M (loaded on GPU with default setting)
+
+[GPT-Neo-2.7B-Picard]
+max_new_tokens=40.0
+temperature=0.7
+repetition_penalty=1.1
+max_time=60.0
+context_length=1000.0
+memory_length=400.0
+gpu_max_memory=2500
+cpu_max_memory=8000
+top_k=50.0
+top_p=1.0
+num_beams=1.0
+no_repeat_ngram_size=0.0
+allow_offload=true
+limit_memory=true
+low_memory=true
+do_sample=true
+offload_dict=true
+device_map=0
+torch_dtype=4
+
+Generation processed in: 6.861027717590332 seconds.
+Generation processed in: 4.226272344589233 seconds.
+Generation processed in: 5.8683061599731445 seconds.
+Generation processed in: 6.6962854862213135 seconds.
+Generation processed in: 7.58961033821106 seconds.
+Generation processed in: 7.330155611038208 seconds.
+Generation processed in: 5.085901737213135 seconds.
+Generation processed in: 9.086805820465088 seconds.
+Generation processed in: 6.68412709236145 seconds.
+Generation processed in: 6.848292112350464 seconds.
+Average generation time: 6.627678442001343
+
+
+---------------- Generation with no assistant ---------
+[GPT-Neo-2.7B-Picard]
+
+max_new_tokens=40.0
+temperature=0.7
+repetition_penalty=1.1
+max_time=60.0
+context_length=1000.0
+memory_length=400.0
+gpu_max_memory=3000
+cpu_max_memory=8000
+top_k=50.0
+top_p=1.0
+num_beams=1.0
+no_repeat_ngram_size=0.0
+allow_offload=true
+limit_memory=true
+low_memory=true
+do_sample=true
+offload_dict=true
+device_map=0
+torch_dtype=4
+
+Generation processed in: 24.23669123649597 seconds.
+Generation processed in: 25.07165551185608 seconds.
+Generation processed in: 22.326248168945312 seconds.
+Generation processed in: 22.905956268310547 seconds.
+Generation processed in: 24.446256160736084 seconds.
+Generation processed in: 24.1502206325531 seconds.
+Generation processed in: 24.392236471176147 seconds.
+Generation processed in: 25.269209384918213 seconds.
+Generation processed in: 24.649462938308716 seconds.
+Generation processed in: 24.55258870124817 seconds.
+Generation processed in: 24.821600198745728 seconds.
+average of : 26,69s

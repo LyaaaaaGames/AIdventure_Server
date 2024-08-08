@@ -44,14 +44,20 @@
 #--  - 07/05/2024 Lyaaaaa
 #--    - Updated generate_text to now be able to censor generation. The words
 #--        passed in p_banned_words parameters won't be generated anymore.
+#--
+#--  - 08/08/2024 Lyaaaaa
+#--    - Demo of assisted generation.
 #------------------------------------------------------------------------------
 
 from model        import Model
 from torch_dtype  import Torch_Dtypes
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, GenerationConfig
+import time
 import logger
 
 class Generator(Model):
+  assistant = AutoModelForCausalLM.from_pretrained("gpt-neo-125M")
+  assistant.to("cuda")
 #------------------------------------------------------------------------------
 #-- generate_text
 #------------------------------------------------------------------------------
@@ -70,13 +76,22 @@ class Generator(Model):
 
       p_parameters["bad_words_ids"] = banned_words_ids
 
+
     if self.is_cuda_available:
       logger.log.info("Loading inputs to GPU")
       model_input.to("cuda")
 
     self._Model.generation_config = GenerationConfig(**p_parameters)
 
-    model_output = self._Model.generate(**model_input)
+    try:
+      start_time = time.time()
+      model_output = self._Model.generate(**model_input, assistant_model = self.assistant)
+      time_elapsed = time.time() - start_time
+      logger.log.debug("Generation processed in: " + str(time_elapsed) + " seconds.")
+
+    except Exception as error:
+      logger.log.error(error)
+
     generated_text = self._Tokenizer.decode(model_output[0], skip_special_tokens=True)
 
     self._empty_gpu_cache()
