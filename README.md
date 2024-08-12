@@ -9,6 +9,12 @@ The server on which connects AIdventure game.
 
 You might have to give the scripts the executable permission with `chmod +x script_name`
 
+## How to update ?
+
+1. Download the new version
+2. Overwrite with the new files
+3. Run `update_env.sh` to update conda's environment (It might do nothing if the environment didn't change).
+
 ## How to edit the server config
 
 1. Open `server/config.py`
