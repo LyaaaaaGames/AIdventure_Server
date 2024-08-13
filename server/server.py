@@ -122,6 +122,15 @@
 #--  - 07/05/2024 Lyaaaaa
 #--    - Updated handle_request and generation case to receive a banned_words
 #--        parameter and pass it to generator.generate_text
+#--
+#--  - 13/08/2024 Lyaaaaa
+#--    - Implemented the assisted generation:
+#--       - Added assistant global var
+#--       - Updated handle_request:
+#--         - Pass assistant to generate_text
+#--         - Added two cases for request, load_assistant and unload_assistant
+#--       - Added load_assistant and unload_assistant functions.
+#--    - Removed "loading translator" print to avoid repetition.
 #------------------------------------------------------------------------------
 
 import asyncio
@@ -141,6 +150,7 @@ HOST = config.HOST
 PORT = config.PORT
 
 generator           = None
+assistant           = None
 from_eng_translator = None
 to_eng_translator   = None
 
@@ -175,6 +185,7 @@ async def handler(p_websocket, path):
 #------------------------------------------------------------------------------
 def handle_request(p_websocket, p_data : dict):
   global generator
+  global assistant
   global from_eng_translator
   global to_eng_translator
 
@@ -185,7 +196,7 @@ def handle_request(p_websocket, p_data : dict):
     parameters   = p_data['parameters']
     banned_words = p_data['banned_words']
 
-    generated_text = generator.generate_text(prompt, parameters, banned_words)
+    generated_text = generator.generate_text(prompt, parameters, banned_words, assistant)
 
     p_data["generated_text"] = generated_text
 
@@ -217,6 +228,15 @@ def handle_request(p_websocket, p_data : dict):
     to_eng = p_data["to_eng"]
     p_data["translated_text"] = translate_text(prompt, to_eng)
 
+
+  elif request == Request.LOAD_ASSISTANT.value:
+    unload_assistant()
+    assistant = load_assistant(p_data)
+
+
+  elif request == Request.UNLOAD_ASSISTANT.value:
+    unload_assistant()
+
   p_data = Json_Utils().json_to_string(p_data)
   return p_data
 
@@ -227,7 +247,6 @@ def handle_request(p_websocket, p_data : dict):
 def load_translator(p_model_name : str,
                     p_model_path : str,
                     p_parameter  : dict = {}):
-  logger.log.debug("loading translator")
   translator = Translator(p_model_name, p_model_path, p_parameter)
   return translator
 
@@ -279,6 +298,31 @@ def translate_text(p_prompt : str, p_to_eng : bool = True):
 def shutdown_server(p_exit_code : int = 0):
   logger.log.info("Shutting down the server")
   exit(p_exit_code)
+
+
+#------------------------------------------------------------------------------
+# An assistant is a generator, so it uses the same loader.
+#------------------------------------------------------------------------------
+def load_assistant(p_data : dict):
+  logger.log.info("Loading assistant")
+  assistant = load_generator(p_data)
+  return assistant
+
+
+#------------------------------------------------------------------------------
+#
+#------------------------------------------------------------------------------
+def unload_assistant():
+  global assistant
+
+  try:
+    name = assistant.get_name()
+    path = assistant.get_path()
+    del assistant
+    logger.log.info("Assistant unloaded " + name + " at " + path)
+
+  except Exception as error:
+    logger.log.error("Couldn't unload assistant: " + str(error))
 
 
 #------------------------------------------------------------------------------

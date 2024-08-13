@@ -213,6 +213,10 @@
 #--        torch_dtype to be set to float32 if cuda isn't available.
 #--        Because otherwise, it will lead to an error during generation.
 #--        See https://github.com/LyaaaaaGames/AIdventure_Server/issues/31
+#--
+#--  - 13/08/2024 Lyaaaaa
+#--    - create_offload_folder is now protected _create_offload_folder
+#--    - Added get functions for name, model, path and tokenizer
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -265,6 +269,34 @@ class Model():
 
     self._empty_gpu_cache()
     self._load()
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def get_path(self):
+    return self._model_path
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def get_name(self):
+    return self._model_name
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def get_model(self):
+    return self._Model
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def get_tokenizer(self):
+    return self._Tokenizer
 
 
 #------------------------------------------------------------------------------
@@ -412,7 +444,7 @@ class Model():
 #------------------------------------------------------------------------------
 #--
 #------------------------------------------------------------------------------
-  def create_offload_folder(self):
+  def _create_offload_folder(self):
     logger.log.debug("Creating temporary folder for offloading.")
     cwd = os.getcwd()
     folder = tempfile.TemporaryDirectory(prefix = config.OFFLOAD_FOLDER,

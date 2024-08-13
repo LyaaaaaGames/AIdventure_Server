@@ -47,6 +47,15 @@
 #--
 #--  - 08/08/2024 Lyaaaaa
 #--    - Demo of assisted generation.
+#--
+#--  - 13/08/2024 Lyaaaaa
+#--    - Print "Loading inputs to GPU" in debug mode to avoid spamming.
+#--    - create_offload_folder renamed _create_offload_folder
+#--    - Implemented the assisted generation:
+#--      - Removed demo code
+#--      - generate_text now receive the assistant as parameter.
+#--      - Pass the assistant to generate function.
+#--      - Updated _set_parameters to print the generator's name too.
 #------------------------------------------------------------------------------
 
 from model        import Model
@@ -56,15 +65,15 @@ import time
 import logger
 
 class Generator(Model):
-  assistant = AutoModelForCausalLM.from_pretrained("gpt-neo-125M")
-  assistant.to("cuda")
+
 #------------------------------------------------------------------------------
 #-- generate_text
 #------------------------------------------------------------------------------
   def generate_text(self,
                     p_prompt       = None,
                     p_parameters   = None,
-                    p_banned_words = []):
+                    p_banned_words = [],
+                    p_assistant    : Model = None):
 
     model_input    = self._Tokenizer(p_prompt, return_tensors = "pt")
 
@@ -78,14 +87,14 @@ class Generator(Model):
 
 
     if self.is_cuda_available:
-      logger.log.info("Loading inputs to GPU")
+      logger.log.debug("Loading inputs to GPU")
       model_input.to("cuda")
 
     self._Model.generation_config = GenerationConfig(**p_parameters)
 
     try:
       start_time = time.time()
-      model_output = self._Model.generate(**model_input, assistant_model = self.assistant)
+      model_output = self._Model.generate(**model_input, assistant_model = p_assistant.get_model())
       time_elapsed = time.time() - start_time
       logger.log.debug("Generation processed in: " + str(time_elapsed) + " seconds.")
 
@@ -102,7 +111,7 @@ class Generator(Model):
 #--
 #------------------------------------------------------------------------------
   def _set_parameters(self, p_parameters : dict):
-    logger.log.info("Setting up the Generator.")
+    logger.log.info("Setting up the Generator " + self.get_name())
     super()._set_parameters(p_parameters)
 
     if self._limit_memory == False:
@@ -112,9 +121,9 @@ class Generator(Model):
                           "cpu" : p_parameters["max_memory"]["cpu"]}
 
     if self._allow_offload == True:
-      self.create_offload_folder()
+      self._create_offload_folder()
     elif self._allow_offload == None and p_parameters["allow_offload"] == True:
-      self.create_offload_folder()
+      self._create_offload_folder()
 
 
     if self._allow_download == None:

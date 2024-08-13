@@ -34,6 +34,9 @@
 #--  - 25/01/2024 Lyaaaaa
 #--    - LOAD_MODEL becomes LOAD_GENERATOR.
 #--    - Added LOAD_TRANSLATOR (value 8)
+#--
+#--  - 13/08/2024 Lyaaaaa
+#--    - Added LOAD_ASSISTANT and UNLOAD_ASSISTANT values.
 #------------------------------------------------------------------------------
 
 from enum import Enum
@@ -47,3 +50,5 @@ class Request(Enum):
   DOWNLOADED_MODEL = 6
   TEXT_TRANSLATION = 7
   LOAD_TRANSLATOR  = 8
+  LOAD_ASSISTANT   = 9
+  UNLOAD_ASSISTANT = 10
