@@ -217,6 +217,10 @@
 #--  - 13/08/2024 Lyaaaaa
 #--    - create_offload_folder is now protected _create_offload_folder
 #--    - Added get functions for name, model, path and tokenizer
+#--
+#--  - 14/08/2024 Lyaaaaa
+#--    - Updated _get_gpu_info to make the prints more explicit.
+#--    - Added get_offload_folder
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -297,6 +301,13 @@ class Model():
 #------------------------------------------------------------------------------
   def get_tokenizer(self):
     return self._Tokenizer
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def get_offload_folder(self):
+    return self._offload_folder
 
 
 #------------------------------------------------------------------------------
@@ -431,13 +442,13 @@ class Model():
 #--
 #------------------------------------------------------------------------------
   def _get_gpu_info(self):
-    logger.log.debug("---------------Memory allocated---------------")
+    logger.log.debug("---------------GPU memory allocated---------------")
     logger.log.debug(human_readable(torch.cuda.memory_allocated()))
-    logger.log.debug("---------------Max memory allocated---------------")
+    logger.log.debug("---------------Max GPU memory allocated---------------")
     logger.log.debug(human_readable(torch.cuda.max_memory_allocated()))
-    logger.log.debug("---------------Memory reserved---------------")
+    logger.log.debug("---------------GPU memory reserved---------------")
     logger.log.debug(human_readable(torch.cuda.memory_reserved()))
-    logger.log.debug("---------------Max memory reserved---------------")
+    logger.log.debug("---------------GPU max memory reserved---------------")
     logger.log.debug(human_readable(torch.cuda.max_memory_reserved()))
 
 

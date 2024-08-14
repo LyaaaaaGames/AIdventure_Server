@@ -56,6 +56,9 @@
 #--      - generate_text now receive the assistant as parameter.
 #--      - Pass the assistant to generate function.
 #--      - Updated _set_parameters to print the generator's name too.
+#--
+#--  - 14/08/2024 Lyaaaaa
+#--    - Updated generate_text to work if assistant is null too.
 #------------------------------------------------------------------------------
 
 from model        import Model
@@ -77,6 +80,11 @@ class Generator(Model):
 
     model_input    = self._Tokenizer(p_prompt, return_tensors = "pt")
 
+    if p_assistant is None:
+      assistant_model = None
+    else:
+      assistant_model = p_assistant.get_model()
+
     if p_banned_words:
       banned_words_ids = self._Tokenizer(
         p_banned_words,
@@ -94,7 +102,7 @@ class Generator(Model):
 
     try:
       start_time = time.time()
-      model_output = self._Model.generate(**model_input, assistant_model = p_assistant.get_model())
+      model_output = self._Model.generate(**model_input, assistant_model = assistant_model)
       time_elapsed = time.time() - start_time
       logger.log.debug("Generation processed in: " + str(time_elapsed) + " seconds.")
 

@@ -131,10 +131,16 @@
 #--         - Added two cases for request, load_assistant and unload_assistant
 #--       - Added load_assistant and unload_assistant functions.
 #--    - Removed "loading translator" print to avoid repetition.
+#--
+#--  - 14/08/2024 Lyaaaaa
+#--    - Updated UNLOAD_ASSISTANT case in handle_request to set assistant back to None.
+#--    - Added delete_offload_folder function and call it in shutdown_server
 #------------------------------------------------------------------------------
 
 import asyncio
 import websockets
+import shutil
+import os
 
 # Custom imports
 import config
@@ -236,6 +242,7 @@ def handle_request(p_websocket, p_data : dict):
 
   elif request == Request.UNLOAD_ASSISTANT.value:
     unload_assistant()
+    assistant = None
 
   p_data = Json_Utils().json_to_string(p_data)
   return p_data
@@ -296,6 +303,7 @@ def translate_text(p_prompt : str, p_to_eng : bool = True):
 #
 #------------------------------------------------------------------------------
 def shutdown_server(p_exit_code : int = 0):
+  delete_offload_folder()
   logger.log.info("Shutting down the server")
   exit(p_exit_code)
 
@@ -323,6 +331,18 @@ def unload_assistant():
 
   except Exception as error:
     logger.log.error("Couldn't unload assistant: " + str(error))
+
+
+#------------------------------------------------------------------------------
+#
+#------------------------------------------------------------------------------
+def delete_offload_folder():
+  global generator
+  folder = generator.get_offload_folder()
+
+  if os.path.exists(folder):
+    logger.log.info("Deleting offload folder")
+    shutil.rmtree(folder)
 
 
 #------------------------------------------------------------------------------
