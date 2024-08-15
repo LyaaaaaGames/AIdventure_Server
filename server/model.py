@@ -351,8 +351,9 @@ class Model():
   def _load_tokens(self):
     try:
       self._Tokenizer = AutoTokenizer.from_pretrained(
-        self._model_path,
-        add_prefix_space=True
+        self._model_path
+        #add_prefix_space=True #TODO Uncomment it. Parameter needed for banned word list.
+        # TODO This problem must be fixed before stable release. See error https://github.com/huggingface/transformers/issues/32682
         )
     except Exception as e:
       logger.log.error("Error loading tokens in " + self._model_path)
