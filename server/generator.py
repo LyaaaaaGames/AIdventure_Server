@@ -44,23 +44,46 @@
 #--  - 07/05/2024 Lyaaaaa
 #--    - Updated generate_text to now be able to censor generation. The words
 #--        passed in p_banned_words parameters won't be generated anymore.
+#--
+#--  - 08/08/2024 Lyaaaaa
+#--    - Demo of assisted generation.
+#--
+#--  - 13/08/2024 Lyaaaaa
+#--    - Print "Loading inputs to GPU" in debug mode to avoid spamming.
+#--    - create_offload_folder renamed _create_offload_folder
+#--    - Implemented the assisted generation:
+#--      - Removed demo code
+#--      - generate_text now receive the assistant as parameter.
+#--      - Pass the assistant to generate function.
+#--      - Updated _set_parameters to print the generator's name too.
+#--
+#--  - 14/08/2024 Lyaaaaa
+#--    - Updated generate_text to work if assistant is null too.
 #------------------------------------------------------------------------------
 
 from model        import Model
 from torch_dtype  import Torch_Dtypes
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, GenerationConfig
+import time
 import logger
 
 class Generator(Model):
+
 #------------------------------------------------------------------------------
 #-- generate_text
 #------------------------------------------------------------------------------
   def generate_text(self,
                     p_prompt       = None,
                     p_parameters   = None,
-                    p_banned_words = []):
+                    p_banned_words = [],
+                    p_assistant    : Model = None):
 
     model_input    = self._Tokenizer(p_prompt, return_tensors = "pt")
+
+    if p_assistant is None:
+      assistant_model = None
+    else:
+      assistant_model = p_assistant.get_model()
 
     if p_banned_words:
       banned_words_ids = self._Tokenizer(
@@ -70,13 +93,22 @@ class Generator(Model):
 
       p_parameters["bad_words_ids"] = banned_words_ids
 
+
     if self.is_cuda_available:
-      logger.log.info("Loading inputs to GPU")
+      logger.log.debug("Loading inputs to GPU")
       model_input.to("cuda")
 
     self._Model.generation_config = GenerationConfig(**p_parameters)
 
-    model_output = self._Model.generate(**model_input)
+    try:
+      start_time = time.time()
+      model_output = self._Model.generate(**model_input, assistant_model = assistant_model)
+      time_elapsed = time.time() - start_time
+      logger.log.debug("Generation processed in: " + str(time_elapsed) + " seconds.")
+
+    except Exception as error:
+      logger.log.error(error)
+
     generated_text = self._Tokenizer.decode(model_output[0], skip_special_tokens=True)
 
     self._empty_gpu_cache()
@@ -87,7 +119,7 @@ class Generator(Model):
 #--
 #------------------------------------------------------------------------------
   def _set_parameters(self, p_parameters : dict):
-    logger.log.info("Setting up the Generator.")
+    logger.log.info("Setting up the Generator " + self.get_name())
     super()._set_parameters(p_parameters)
 
     if self._limit_memory == False:
@@ -97,9 +129,9 @@ class Generator(Model):
                           "cpu" : p_parameters["max_memory"]["cpu"]}
 
     if self._allow_offload == True:
-      self.create_offload_folder()
+      self._create_offload_folder()
     elif self._allow_offload == None and p_parameters["allow_offload"] == True:
-      self.create_offload_folder()
+      self._create_offload_folder()
 
 
     if self._allow_download == None:

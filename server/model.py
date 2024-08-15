@@ -213,6 +213,14 @@
 #--        torch_dtype to be set to float32 if cuda isn't available.
 #--        Because otherwise, it will lead to an error during generation.
 #--        See https://github.com/LyaaaaaGames/AIdventure_Server/issues/31
+#--
+#--  - 13/08/2024 Lyaaaaa
+#--    - create_offload_folder is now protected _create_offload_folder
+#--    - Added get functions for name, model, path and tokenizer
+#--
+#--  - 14/08/2024 Lyaaaaa
+#--    - Updated _get_gpu_info to make the prints more explicit.
+#--    - Added get_offload_folder
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -265,6 +273,41 @@ class Model():
 
     self._empty_gpu_cache()
     self._load()
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def get_path(self):
+    return self._model_path
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def get_name(self):
+    return self._model_name
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def get_model(self):
+    return self._Model
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def get_tokenizer(self):
+    return self._Tokenizer
+
+
+#------------------------------------------------------------------------------
+#--
+#------------------------------------------------------------------------------
+  def get_offload_folder(self):
+    return self._offload_folder
 
 
 #------------------------------------------------------------------------------
@@ -399,20 +442,20 @@ class Model():
 #--
 #------------------------------------------------------------------------------
   def _get_gpu_info(self):
-    logger.log.debug("---------------Memory allocated---------------")
+    logger.log.debug("---------------GPU memory allocated---------------")
     logger.log.debug(human_readable(torch.cuda.memory_allocated()))
-    logger.log.debug("---------------Max memory allocated---------------")
+    logger.log.debug("---------------Max GPU memory allocated---------------")
     logger.log.debug(human_readable(torch.cuda.max_memory_allocated()))
-    logger.log.debug("---------------Memory reserved---------------")
+    logger.log.debug("---------------GPU memory reserved---------------")
     logger.log.debug(human_readable(torch.cuda.memory_reserved()))
-    logger.log.debug("---------------Max memory reserved---------------")
+    logger.log.debug("---------------GPU max memory reserved---------------")
     logger.log.debug(human_readable(torch.cuda.max_memory_reserved()))
 
 
 #------------------------------------------------------------------------------
 #--
 #------------------------------------------------------------------------------
-  def create_offload_folder(self):
+  def _create_offload_folder(self):
     logger.log.debug("Creating temporary folder for offloading.")
     cwd = os.getcwd()
     folder = tempfile.TemporaryDirectory(prefix = config.OFFLOAD_FOLDER,
