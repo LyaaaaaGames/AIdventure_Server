@@ -221,6 +221,14 @@
 #--  - 14/08/2024 Lyaaaaa
 #--    - Updated _get_gpu_info to make the prints more explicit.
 #--    - Added get_offload_folder
+#--
+#--  - 25/06/2025 Lyaaaaa
+#--    - Fix issue 308 "offloading always activated".
+#--      - Updated _set_parameters
+#--         - _allow_offload is now equal to client's setting if the config value is set to None
+#--         - _offload_dict has been moved up to model from generator.
+#--      - Updated _load_model the arguments offload_folder and offload_state_dict
+#--          are now set only if _allow_offload is True.
 #------------------------------------------------------------------------------
 
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -314,7 +322,17 @@ class Model():
 #--
 #------------------------------------------------------------------------------
   def _set_parameters(self, p_parameters : dict):
-    # See children for implementation
+    # See children for complete implementation
+
+    if self._allow_offload == None:
+      self._allow_offload = p_parameters["allow_offload"]
+
+    if self._offload_dict == None:
+      self._offload_dict = p_parameters["offload_dict"]
+
+    if self._allow_offload == True:
+      self._create_offload_folder()
+
     logger.log.debug(p_parameters)
 
 
@@ -370,9 +388,11 @@ class Model():
       args = {"low_cpu_mem_usage"  : self._low_memory_mode,
               "device_map"         : self._device_map,
               "torch_dtype"        : self._torch_dtype,
-              "max_memory"         : self._max_memory,
-              "offload_folder"     : self._offload_folder,
-              "offload_state_dict" : self._offload_dict}
+              "max_memory"         : self._max_memory}
+
+      if self._allow_offload:
+        args["offload_folder" ] = self._offload_folder
+        args["offload_state_dict"] = self._offload_dict
 
       logger.log.debug("Model settings:")
       logger.log.debug(args)
