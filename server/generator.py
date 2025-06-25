@@ -59,6 +59,10 @@
 #--
 #--  - 14/08/2024 Lyaaaaa
 #--    - Updated generate_text to work if assistant is null too.
+#--
+#--  - 25/06/2025 Lyaaaaa
+#--    - Updated _set_parameters to move to parent's method _set_parameters
+#--        the checks of _allow_offload and _offload_dict.
 #------------------------------------------------------------------------------
 
 from model        import Model
@@ -128,11 +132,6 @@ class Generator(Model):
       self._max_memory = {0     : p_parameters["max_memory"]["0"],
                           "cpu" : p_parameters["max_memory"]["cpu"]}
 
-    if self._allow_offload == True:
-      self._create_offload_folder()
-    elif self._allow_offload == None and p_parameters["allow_offload"] == True:
-      self._create_offload_folder()
-
 
     if self._allow_download == None:
       self._allow_download = p_parameters["allow_download"]
@@ -142,9 +141,6 @@ class Generator(Model):
 
     if self._torch_dtype == None:
       self._torch_dtype = Torch_Dtypes.dtypes.value[p_parameters["torch_dtype"]]
-
-    if self._offload_dict == None:
-      self._offload_dict = p_parameters["offload_dict"]
 
     if self._low_memory_mode == None:
       self._low_memory_mode  = p_parameters["low_memory_mode"]
